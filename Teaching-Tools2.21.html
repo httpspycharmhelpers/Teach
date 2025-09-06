@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化教学工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            overflow-x: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1600px;
+            width: 100%;
+        }
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .slider-container span {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            color: #3498db;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e0e0e0;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2980b9;
+        }
+        .unit-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .unit-selector select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            width: 100%;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            min-width: 80px;
+        }
+        #reset {
+            background: #e74c3c;
+            color: white;
+        }
+        #reset:hover {
+            background: #c0392b;
+        }
+        #clear {
+            background: #7f8c8d;
+            color: white;
+        }
+        #clear:hover {
+            background: #636e72;
+        }
+        #fullscreen {
+            background: #2ecc71;
+            color: white;
+        }
+        #fullscreen:hover {
+            background: #27ae60;
+        }
+        #layer-view {
+            background: #9b59b6;
+            color: white;
+        }
+        #layer-view:hover {
+            background: #8e44ad;
+        }
+        #marker-mode {
+            background: #f39c12;
+            color: white;
+        }
+        #marker-mode:hover {
+            background: #d35400;
+        }
+        #function-mode {
+            background: #16a085;
+            color: white;
+        }
+        #function-mode:hover {
+            background: #1abc9c;
+        }
+        #developer-mode {
+            background: #34495e;
+            color: white;
+        }
+        #developer-mode:hover {
+            background: #2c3e50;
+        }
+        #math-problems {
+            background: #e67e22;
+            color: white;
+        }
+        #math-problems:hover {
+            background: #d35400;
+        }
+        .visualization {
+            flex: 1;
+            min-width: 300px;
+            max-width: 1000px;
+            height: 600px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .volume-display {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .volume-display span {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        #cube-container {
+            width: 100%;
+            height: 500px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .axis-label {
+            position: absolute;
+            font-weight: bold;
+            color: #3498db;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 8px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .length-label {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .width-label {
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+        }
+        .height-label {
+            top: 10px;
+            left: 20px;
+        }
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        .social-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1400px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .chat-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #7f8c8d;
+        }
+        .tag {
+            background: #3498db;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        /* 模态窗口样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-modal {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        .function-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        .geometry-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .geometry-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .geometry-btn:hover {
+            background: #2980b9;
+        }
+        .annotation-canvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 10px;
+            background: white;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .tool-btn {
+            padding: 8px 12px;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tool-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .math-problem-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .math-problem-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-align: left;
+        }
+        .math-problem-btn:hover {
+            background: #2980b9;
+        }
+        .common-functions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .function-btn {
+            padding: 10px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 0.9rem;
+        }
+        .function-btn:hover {
+            background: #8e44ad;
+        }
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .controls, .visualization {
+                max-width: 100%;
+            }
+            .visualization {
+                height: 500px;
+            }
+            #cube-container {
+                height: 400px;
+            }
+            .social-bar {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .controls {
+                padding: 15px;
+            }
+            .slider-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            input[type="range"] {
+                width: 100%;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+            .volume-display {
+                font-size: 1.2rem;
+            }
+            .geometry-selector {
+                grid-template-columns: 1fr;
+            }
+            .common-functions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>可视化教学工具</h1>
+        <p>通过调整长、宽、高，直观理解长方体体积的计算原理</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label for="length">长:</label>
+                <div class="slider-container">
+                    <input type="range" id="length" min="1" max="1500" value="8" step="1">
+                    <span id="length-value">8</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="length-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="width">宽:</label>
+                <div class="slider-container">
+                    <input type="range" id="width" min="1" max="1500" value="3" step="1">
+                    <span id="width-value">3</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="width-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="height">高:</label>
+                <div class="slider-container">
+                    <input type="range" id="height" min="1" max="1500" value="5" step="1">
+                    <span id="height-value">5</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="height-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="buttons">
+                <button id="reset">还原</button>
+                <button id="clear">清空</button>
+                <button id="layer-view">分层</button>
+                <button id="marker-mode">标记模式</button>
+                <button id="function-mode">函数可视化</button>
+                <button id="developer-mode">开发者模式</button>
+                <button id="math-problems">数学题目</button>
+                <button id="fullscreen">全屏</button>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <div class="volume-display">
+                体积 = <span id="volume">120</span> 立方厘米
+            </div>
+            <div id="cube-container"></div>
+            <div class="axis-label length-label">长</div>
+            <div class="axis-label width-label">宽</div>
+            <div class="axis-label height-label">高</div>
+            <div class="instructions">
+                拖动滑块调整长方体的尺寸，观察体积的变化。使用鼠标拖动可以旋转视图。
+            </div>
+        </div>
+    </div>
+
+    <div class="social-bar">
+        <div class="user-info">
+            <div class="avatar">jS</div>
+            <div>数学可视化教学工具</div>
+        </div>
+        <div class="chat-info">
+            <span class="tag">教育科技</span>
+            <span>增强版 v2.0</span>
+        </div>
+    </div>
+
+    <!-- 函数可视化模态窗口 -->
+    <div id="function-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>函数可视化工具</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <input type="text" class="function-input" id="function-expression" placeholder="输入函数表达式，如: Math.sin(x) * Math.cos(z)" value="Math.sin(x) * Math.cos(z)">
+            <div class="common-functions">
+                <button class="function-btn" data-func="Math.sin(x)">sin(x)</button>
+                <button class="function-btn" data-func="Math.cos(x)">cos(x)</button>
+                <button class="function-btn" data-func="x*x">x²</button>
+                <button class="function-btn" data-func="Math.sqrt(x)">√x</button>
+                <button class="function-btn" data-func="Math.exp(x)">e^x</button>
+                <button class="function-btn" data-func="Math.log(x)">ln(x)</button>
+                <button class="function-btn" data-func="x*x + z*z">x² + z²</button>
+                <button class="function-btn" data-func="Math.sin(x) * Math.cos(z)">sin(x)cos(z)</button>
+                <button class="function-btn" data-func="Math.sin(x)">sin(x)</button>
+                <button class="function-btn" data-func="Math.cos(x)">cos(x)</button>
+                <button class="function-btn" data-func="Math.tan(x)">tan(x)</button>
+                <button class="function-btn" data-func="Math.exp(x)">e^x</button>
+                <button class="function-btn" data-func="Math.log(x)">ln(x)</button>
+                <button class="function-btn" data-func="Math.log10(x)">log10(x)</button>
+                <button class="function-btn" data-func="Math.sqrt(x)">√x</button>
+                <button class="function-btn" data-func="x*x">x²</button>
+                <button class="function-btn" data-func="x*x*x">x³</button>
+                <button class="function-btn" data-func="1/x">1/x</button>
+                <button class="function-btn" data-func="Math.abs(x)">|x|</button>
+                <button class="function-btn" data-func="Math.pow(x,2)">x^2</button>
+                <button class="function-btn" data-func="Math.pow(x,3)">x^3</button>
+                <button class="function-btn" data-func="Math.pow(2,x)">2^x</button>
+                <button class="function-btn" data-func="Math.sin(x)*Math.cos(z)">sin(x)cos(z)</button>
+                <button class="function-btn" data-func="x*x + z*z">x² + z²</button>
+                <button class="function-btn" data-func="Math.sin(Math.sqrt(x*x+z*z))">sin(√(x²+z²))</button>
+                <button class="function-btn" data-func="Math.exp(-(x*x+z*z)/10)">e^(-(x²+z²)/10)</button>
+                <button class="function-btn" data-func="Math.cos(x)*Math.sin(z)">cos(x)sin(z)</button>
+                <button class="function-btn" data-func="x*Math.sin(z) + z*Math.cos(x)">x·sin(z) + z·cos(x)</button>
+<button class="function-btn" data-func="Math.atan(x/z)">arctan(x/z)</button>
+<button class="function-btn" data-func="Math.sin(x)+Math.cos(z)">sin(x)+cos(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.sin(z)">sin(x)sin(z)</button>
+<button class="function-btn" data-func="Math.cos(x)*Math.cos(z)">cos(x)cos(z)</button>
+<button class="function-btn" data-func="Math.tan(x)*Math.tan(z)">tan(x)tan(z)</button>
+<button class="function-btn" data-func="x/Math.sqrt(1+z*z)">x/√(1+z²)</button>
+<button class="function-btn" data-func="z/Math.sqrt(1+x*x)">z/√(1+x²)</button>
+<button class="function-btn" data-func="Math.sin(x*x+z*z)">sin(x²+z²)</button>
+<button class="function-btn" data-func="Math.cos(x*x+z*z)">cos(x²+z²)</button>
+<button class="function-btn" data-func="Math.exp(Math.sin(x)+Math.cos(z))">e^(sin(x)+cos(z))</button>
+<button class="function-btn" data-func="Math.log(Math.abs(x)+Math.abs(z)+1)">ln(|x|+|z|+1)</button>
+<button class="function-btn" data-func="Math.sin(5*x)*Math.cos(5*z)/5">sin(5x)cos(5z)/5</button>
+<button class="function-btn" data-func="Math.sin(10*(x*x+z*z))/10">sin(10(x²+z²))/10</button>
+<button class="function-btn" data-func="x*z/10">x·z/10</button>
+<button class="function-btn" data-func="(x*x-z*z)/10">(x²-z²)/10</button>
+<button class="function-btn" data-func="Math.atan2(x,z)">arctan2(x,z)</button>
+<button class="function-btn" data-func="Math.hypot(x,z)">√(x²+z²)</button>
+<button class="function-btn" data-func="Math.sin(Math.hypot(x,z))">sin(√(x²+z²))</button>
+<button class="function-btn" data-func="Math.cos(Math.hypot(x,z))">cos(√(x²+z²))</button>
+<button class="function-btn" data-func="Math.exp(-Math.hypot(x,z)/5)">e^(-√(x²+z²)/5)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-z*z/10)">sin(x)e^(-z²/10)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.exp(-x*x/10)">cos(z)e^(-x²/10)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)*Math.exp(-(x*x+z*z)/20)">sin(x)cos(z)e^(-(x²+z²)/20)</button>
+<button class="function-btn" data-func="Math.sin(2*x)*Math.cos(2*z)">sin(2x)cos(2z)</button>
+<button class="function-btn" data-func="Math.sin(3*x)*Math.cos(3*z)">sin(3x)cos(3z)</button>
+<button class="function-btn" data-func="Math.sin(4*x)*Math.cos(4*z)">sin(4x)cos(4z)</button>
+<button class="function-btn" data-func="(Math.sin(x)+Math.sin(z))/2">(sin(x)+sin(z))/2</button>
+<button class="function-btn" data-func="(Math.cos(x)+Math.cos(z))/2">(cos(x)+cos(z))/2</button>
+<button class="function-btn" data-func="Math.max(Math.abs(x),Math.abs(z))">max(|x|,|z|)</button>
+<button class="function-btn" data-func="Math.min(Math.abs(x),Math.abs(z))">min(|x|,|z|)</button>
+<button class="function-btn" data-func="Math.abs(x)+Math.abs(z)">|x|+|z|</button>
+<button class="function-btn" data-func="Math.abs(x)-Math.abs(z)">|x|-|z|</button>
+<button class="function-btn" data-func="x>0?1:-1">sign(x)</button>
+<button class="function-btn" data-func="z>0?1:-1">sign(z)</button>
+<button class="function-btn" data-func="x>0?x*x:-x*x">x·|x|</button>
+<button class="function-btn" data-func="z>0?z*z:-z*z">z·|z|</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.sin(x)+Math.cos(z)*Math.cos(z)">sin²(x)+cos²(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)+Math.cos(x)*Math.sin(z)">sin(x)cos(z)+cos(x)sin(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)-Math.cos(x)*Math.sin(z)">sin(x)cos(z)-cos(x)sin(z)</button>
+<button class="function-btn" data-func="Math.atan(Math.tan(x)+Math.tan(z))">arctan(tan(x)+tan(z))</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*x)*Math.cos(Math.PI*z)">sin(πx)cos(πz)</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*x)*Math.sin(Math.PI*z)">cos(πx)sin(πz)</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*x)*Math.sin(Math.PI*z)">sin(πx)sin(πz)</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*x)*Math.cos(Math.PI*z)">cos(πx)cos(πz)</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*Math.sqrt(x*x+z*z))">sin(π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*Math.sqrt(x*x+z*z))">cos(π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.exp(-Math.PI*Math.sqrt(x*x+z*z))">e^(-π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-Math.abs(z))">sin(x)e^(-|z|)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.exp(-Math.abs(x))">cos(z)e^(-|x|)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.log(Math.abs(z)+1)">sin(x)ln(|z|+1)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.log(Math.abs(x)+1)">cos(z)ln(|x|+1)</button>
+<button class="function-btn" data-func="Math.atan(x*z)">arctan(x·z)</button>
+<button class="function-btn" data-func="Math.sin(x*z)">sin(x·z)</button>
+<button class="function-btn" data-func="Math.cos(x*z)">cos(x·z)</button>
+<button class="function-btn" data-func="Math.tan(x*z)">tan(x·z)</button>
+<button class="function-btn" data-func="Math.exp(x*z/10)">e^(x·z/10)</button>
+<button class="function-btn" data-func="Math.log(Math.abs(x*z)+1)">ln(|x·z|+1)</button>
+<button class="function-btn" data-func="Math.sqrt(Math.abs(x*z))">√|x·z|</button>
+<button class="function-btn" data-func="Math.pow(Math.abs(x),Math.abs(z))">|x|^|z|</button>
+<button class="function-btn" data-func="Math.sin(x)+z">sin(x)+z</button>
+<button class="function-btn" data-func="Math.cos(z)+x">cos(z)+x</button>
+<button class="function-btn" data-func="x+Math.sin(z)">x+sin(z)</button>
+<button class="function-btn" data-func="z+Math.cos(x)">z+cos(x)</button>
+<button class="function-btn" data-func="x*z/Math.sqrt(x*x+z*z+1)">x·z/√(x²+z²+1)</button>
+<button class="function-btn" data-func="(x*x-z*z)/Math.sqrt(x*x+z*z+1)">(x²-z²)/√(x²+z²+1)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.tanh(z)">sin(x)tanh(z)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.tanh(x)">cos(z)tanh(x)</button>
+<button class="function-btn" data-func="Math.sinh(x)*Math.cos(z)">sinh(x)cos(z)</button>
+<button class="function-btn" data-func="Math.cosh(z)*Math.sin(x)">cosh(z)sin(x)</button>
+<button class="function-btn" data-func="Math.sinh(x)*Math.sinh(z)">sinh(x)sinh(z)</button>
+<button class="function-btn" data-func="Math.cosh(x)*Math.cosh(z)">cosh(x)cosh(z)</button>
+<button class="function-btn" data-func="Math.tanh(x)*Math.tanh(z)">tanh(x)tanh(z)</button>
+<button class="function-btn" data-func="Math.asin(x/10)*Math.acos(z/10)">arcsin(x/10)arccos(z/10)</button>
+<button class="function-btn" data-func="Math.atan(x/5)*Math.atan(z/5)">arctan(x/5)arctan(z/5)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.atan(z)">sin(x)arctan(z)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.atan(x)">cos(z)arctan(x)</button>
+<button class="function-btn" data-func="Math.exp(-x*x/50-z*z/50)">e^(-x²/50-z²/50)</button>
+<button class="function-btn" data-func="Math.exp(-(x-5)*(x-5)/50-(z-5)*(z-5)/50)">e^(-(x-5)²/50-(z-5)²/50)</button>
+<button class="function-btn" data-func="Math.exp(-(x+5)*(x+5)/50-(z+5)*(z+5)/50)">e^(-(x+5)²/50-(z+5)²/50)</button>
+<button class="function-btn" data-func="Math.exp(-x*x/50)*Math.exp(-z*z/50)">e^(-x²/50)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-x*x/100)*Math.cos(z)*Math.exp(-z*z/100)">sin(x)e^(-x²/100)cos(z)e^(-z²/100)</button>
+<button class="function-btn" data-func="Math.sin(2*x)*Math.exp(-x*x/50)*Math.cos(2*z)*Math.exp(-z*z/50)">sin(2x)e^(-x²/50)cos(2z)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(3*x)*Math.exp(-x*x/50)*Math.cos(3*z)*Math.exp(-z*z/50)">sin(3x)e^(-x²/50)cos(3z)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(4*x)*Math.exp(-x*x/50)*Math.cos(4*z)*Math.exp(-z*z/50)">sin(4x)e^(-x²/50)cos(4z)e^(-z²/50)</button>
+    <button class="function-btn" data-func="Math.sin(5*x)*Math.exp(-x*x/50)*Math.cos(5*z)*Math.exp(-z*z/50)">sin(5x)e^(-x²/50)cos(5z)e^(-z²/50)</button>
+            </div>
+            <div class="buttons">
+                <button id="plot-2d">绘制2D图像</button>
+                <button id="plot-3d">绘制3D图像</button>
+                <button id="clear-function">清除函数</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开发者模式模态窗口 -->
+    <div id="developer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>开发者模式 - 创建几何体</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="geometry-selector">
+                <button class="geometry-btn" data-type="sphere">球体</button>
+                <button class="geometry-btn" data-type="cylinder">圆柱体</button>
+                <button class="geometry-btn" data-type="cone">圆锥体</button>
+                <button class="geometry-btn" data-type="torus">圆环</button>
+                <button class="geometry-btn" data-type="pyramid">金字塔</button>
+                <button class="geometry-btn" data-type="plane">平面</button>
+            </div>
+            <div class="control-group">
+                <label for="geo-size">尺寸:</label>
+                <input type="range" id="geo-size" min="1" max="50" value="5" step="1">
+                <span id="geo-size-value">5</span>
+            </div>
+            <div class="control-group">
+                <label for="geo-color">颜色:</label>
+                <input type="color" id="geo-color" value="#3498db">
+            </div>
+            <button id="add-geometry">添加到场景</button>
+        </div>
+    </div>
+
+    <!-- 数学题目模态窗口 -->
+    <div id="math-problems-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>数学题目示例</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="math-problem-list">
+                <button class="math-problem-btn" data-length="5" data-width="4" data-height="3">题目1: 长5cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="10" data-width="6" data-height="8">题目2: 长10cm, 宽6cm, 高8cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="12" data-width="12" data-height="12">题目3: 棱长为12cm的正方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="15" data-width="10" data-height="5">题目4: 长15cm, 宽10cm, 高5cm的长方体可以分成多少个小立方体?</button>
+                <button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目5: 计算长20cm, 宽15cm, 高10cm的长方体体积</button>
+                <button class="math-problem-btn" data-length="3" data-width="2" data-height="2">题目1: 长3cm, 宽2cm, 高2cm的长方体体积是多少?</button>             
+                <button class="math-problem-btn" data-length="4" data-width="3" data-height="2">题目2: 长4cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="5" data-width="2" data-height="2">题目3: 长5cm, 宽2cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="4" data-width="4" data-height="3">题目4: 长4cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="6" data-width="3" data-height="2">题目5: 长6cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="5" data-width="3" data-height="3">题目6: 长5cm, 宽3cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="7" data-width="2" data-height="2">题目7: 长7cm, 宽2cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="4" data-width="3" data-height="4">题目8: 长4cm, 宽3cm, 高4cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="6" data-width="4" data-height="3">题目9: 长6cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="8" data-width="3" data-height="2">题目10: 长8cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="12" data-width="8" data-height="5">题目11: 长12cm, 宽8cm, 高5cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="15" data-width="10" data-height="6">题目12: 长15cm, 宽10cm, 高6cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="18" data-width="12" data-height="9">题目13: 长18cm, 宽12cm, 高9cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目14: 长20cm, 宽15cm, 高10cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="24" data-width="16" data-height="12">题目15: 长24cm, 宽16cm, 高12cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="25" data-width="20" data-height="15">题目16: 长25cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="30" data-width="20" data-height="15">题目17: 长30cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="35" data-width="25" data-height="20">题目18: 长35cm, 宽25cm, 高20cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="40" data-width="30" data-height="25">题目19: 长40cm, 宽30cm, 高25cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="45" data-width="35" data-height="30">题目20: 长45cm, 宽35cm, 高30cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="75" data-width="50" data-height="40">题目21: 长75cm, 宽50cm, 高40cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="85" data-width="60" data-height="45">题目22: 长85cm, 宽60cm, 高45cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="95" data-width="70" data-height="50">题目23: 长95cm, 宽70cm, 高50cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="105" data-width="80" data-height="55">题目24: 长105cm, 宽80cm, 高55cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="115" data-width="85" data-height="60">题目25: 长115cm, 宽85cm, 高60cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="125" data-width="90" data-height="65">题目26: 长125cm, 宽90cm, 高65cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="135" data-width="95" data-height="70">题目27: 长135cm, 宽95cm, 高70cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="145" data-width="100" data-height="75">题目28: 长145cm, 宽100cm, 高75cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="155" data-width="105" data-height="80">题目29: 长155cm, 宽105cm, 高80cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="165" data-width="110" data-height="85">题目30: 长165cm, 宽110cm, 高85cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="5" data-width="4" data-height="3">题目1: 长5cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="8" data-width="6" data-height="4">题目2: 长8cm, 宽6cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="10" data-width="5" data-height="2">题目3: 长10cm, 宽5cm, 高2cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="7" data-width="7" data-height="7">题目4: 棱长为7cm的正方体体积是多少?</button>
+<button class="math-problem-btn" data-length="12" data-width="8" data-height="5">题目5: 长12cm, 宽8cm, 高5cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="15" data-width="10" data-height="6">题目6: 长15cm, 宽10cm, 高6cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="9" data-width="9" data-height="4">题目7: 长9cm, 宽9cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="6" data-width="5" data-height="3">题目8: 长6cm, 宽5cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目9: 长20cm, 宽15cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="11" data-width="7" data-height="5">题目10: 长11cm, 宽7cm, 高5cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="14" data-width="10" data-height="8">题目11: 长14cm, 宽10cm, 高8cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="18" data-width="12" data-height="9">题目12: 长18cm, 宽12cm, 高9cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="25" data-width="20" data-height="15">题目13: 长25cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="30" data-width="25" data-height="20">题目14: 长30cm, 宽25cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="22" data-width="18" data-height="12">题目15: 长22cm, 宽18cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="16" data-width="14" data-height="10">题目16: 长16cm, 宽14cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="13" data-width="11" data-height="7">题目17: 长13cm, 宽11cm, 高7cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="17" data-width="13" data-height="9">题目18: 长17cm, 宽13cm, 高9cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="19" data-width="15" data-height="11">题目19: 长19cm, 宽15cm, 高11cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="21" data-width="16" data-height="12">题目20: 长21cm, 宽16cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="24" data-width="18" data-height="14">题目21: 长24cm, 宽18cm, 高14cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="26" data-width="20" data-height="16">题目22: 长26cm, 宽20cm, 高16cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="28" data-width="22" data-height="18">题目23: 长28cm, 宽22cm, 高18cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="32" data-width="24" data-height="20">题目24: 长32cm, 宽24cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="35" data-width="28" data-height="22">题目25: 长35cm, 宽28cm, 高22cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="40" data-width="30" data-height="25">题目26: 长40cm, 宽30cm, 高25cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="45" data-width="35" data-height="30">题目27: 长45cm, 宽35cm, 高30cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="50" data-width="40" data-height="35">题目28: 长50cm, 宽40cm, 高35cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="55" data-width="45" data-height="40">题目29: 长55cm, 宽45cm, 高40cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="60" data-width="50" data-height="45">题目30: 长60cm, 宽50cm, 高45cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="4" data-width="3" data-height="2">题目31: 长4cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="7" data-width="5" data-height="3">题目32: 长7cm, 宽5cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="9" data-width="6" data-height="4">题目33: 长9cm, 宽6cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="12" data-width="8" data-height="6">题目34: 长12cm, 宽8cm, 高6cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="15" data-width="10" data-height="8">题目35: 长15cm, 宽10cm, 高8cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="18" data-width="12" data-height="10">题目36: 长18cm, 宽12cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="20" data-width="15" data-height="12">题目37: 长20cm, 宽15cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="22" data-width="16" data-height="14">题目38: 长22cm, 宽16cm, 高14cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="25" data-width="18" data-height="15">题目39: 长25cm, 宽18cm, 高15cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="28" data-width="20" data-height="16">题目40: 长28cm, 宽20cm, 高16cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="30" data-width="22" data-height="18">题目41: 长30cm, 宽22cm, 高18cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="33" data-width="24" data-height="20">题目42: 长33cm, 宽24cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="36" data-width="26" data-height="22">题目43: 长36cm, 宽26cm, 高22cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="38" data-width="28" data-height="24">题目44: 长38cm, 宽28cm, 高24cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="40" data-width="30" data-height="26">题目45: 长40cm, 宽30cm, 高26cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="42" data-width="32" data-height="28">题目46: 长42cm, 宽32cm, 高28cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="44" data-width="34" data-height="30">题目47: 长44cm, 宽34cm, 高30cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="46" data-width="36" data-height="32">题目48: 长46cm, 宽36cm, 高32cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="48" data-width="38" data-height="34">题目49: 长48cm, 宽38cm, 高34cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="50" data-width="40" data-height="36">题目50: 长50cm, 宽40cm, 高36cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="52" data-width="42" data-height="38">题目51: 长52cm, 宽42cm, 高38cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="54" data-width="44" data-height="40">题目52: 长54cm, 宽44cm, 高40cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="56" data-width="46" data-height="42">题目53: 长56cm, 宽46cm, 高42cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="58" data-width="48" data-height="44">题目54: 长58cm, 宽48cm, 高44cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="60" data-width="50" data-height="46">题目55: 长60cm, 宽50cm, 高46cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="62" data-width="52" data-height="48">题目56: 长62cm, 宽52cm, 高48cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="64" data-width="54" data-height="50">题目57: 长64cm, 宽54cm, 高50cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="66" data-width="56" data-height="52">题目58: 长66cm, 宽56cm, 高52cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="68" data-width="58" data-height="54">题目59: 长68cm, 宽58cm, 高54cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="70" data-width="60" data-height="56">题目60: 长70cm, 宽60cm, 高56cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="72" data-width="62" data-height="58">题目61: 长72cm, 宽62cm, 高58cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="74" data-width="64" data-height="60">题目62: 长74cm, 宽64cm, 高60cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="76" data-width="66" data-height="62">题目63: 长76cm, 宽66cm, 高62cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="78" data-width="68" data-height="64">题目64: 长78cm, 宽68cm, 高64cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="80" data-width="70" data-height="66">题目65: 长80cm, 宽70cm, 高66cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="82" data-width="72" data-height="68">题目66: 长82cm, 宽72cm, 高68cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="84" data-width="74" data-height="70">题目67: 长84cm, 宽74cm, 高70cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="86" data-width="76" data-height="72">题目68: 长86cm, 宽76cm, 高72cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="88" data-width="78" data-height="74">题目69: 长88cm, 宽78cm, 高74cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="90" data-width="80" data-height="76">题目70: 长90cm, 宽80cm, 高76cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="92" data-width="82" data-height="78">题目71: 长92cm, 宽82cm, 高78cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="94" data-width="84" data-height="80">题目72: 长94cm, 宽84cm, 高80cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="96" data-width="86" data-height="82">题目73: 长96cm, 宽86cm, 高82cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="98" data-width="88" data-height="84">题目74: 长98cm, 宽88cm, 高84cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="100" data-width="90" data-height="86">题目75: 长100cm, 宽90cm, 高86cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="102" data-width="92" data-height="88">题目76: 长102cm, 宽92cm, 高88cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="104" data-width="94" data-height="90">题目77: 长104cm, 宽94cm, 高90cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="106" data-width="96" data-height="92">题目78: 长106cm, 宽96cm, 高92cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="108" data-width="98" data-height="94">题目79: 长108cm, 宽98cm, 高94cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="110" data-width="100" data-height="96">题目80: 长110cm, 宽100cm, 高96cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="112" data-width="102" data-height="98">题目81: 长112cm, 宽102cm, 高98cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="114" data-width="104" data-height="100">题目82: 长114cm, 宽104cm, 高100cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="116" data-width="106" data-height="102">题目83: 长116cm, 宽106cm, 高102cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="118" data-width="108" data-height="104">题目84: 长118cm, 宽108cm, 高104cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="120" data-width="110" data-height="106">题目85: 长120cm, 宽110cm, 高106cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="122" data-width="112" data-height="108">题目86: 长122cm, 宽112cm, 高108cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="124" data-width="114" data-height="110">题目87: 长124cm, 宽114cm, 高110cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="126" data-width="116" data-height="112">题目88: 长126cm, 宽116cm, 高112cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="128" data-width="118" data-height="114">题目89: 长128cm, 宽118cm, 高114cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="130" data-width="120" data-height="116">题目90: 长130cm, 宽120cm, 高116cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="132" data-width="122" data-height="118">题目91: 长132cm, 宽122cm, 高118cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="134" data-width="124" data-height="120">题目92: 长134cm, 宽124cm, 高120cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="136" data-width="126" data-height="122">题目93: 长136cm, 宽126cm, 高122cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="138" data-width="128" data-height="124">题目94: 长138cm, 宽128cm, 高124cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="140" data-width="130" data-height="126">题目95: 长140cm, 宽130cm, 高126cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="142" data-width="132" data-height="128">题目96: 长142cm, 宽132cm, 高128cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="144" data-width="134" data-height="130">题目97: 长144cm, 宽134cm, 高130cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="146" data-width="136" data-height="132">题目98: 长146cm, 宽136cm, 高132cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="148" data-width="138" data-height="134">题目99: 长148cm, 宽138cm, 高134cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="150" data-width="140" data-height="136">题目100: 长150cm, 宽140cm, 高136cm的长方体体积是多少?</button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 注释画布模态窗口 -->
+    <div id="annotation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加注释</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="toolbar">
+                <button class="tool-btn active" data-tool="pen">画笔</button>
+                <button class="tool-btn" data-tool="eraser">橡皮擦</button>
+                <button class="tool-btn" data-tool="text">文字</button>
+            </div>
+            <canvas id="annotation-canvas" class="annotation-canvas" width="400" height="300"></canvas>
+            <div class="buttons" style="margin-top: 15px;">
+                <button id="save-annotation">保存注释</button>
+                <button id="clear-annotation">清除画布</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let cube, cubeGroup, platform;
+        let length = 8, width = 3, height = 5;
+        let layerMode = false;
+        let currentLayer = 0;
+        let markerMode = false;
+        let functionMode = false;
+        let developerMode = false;
+        let smallCubes = [];
+        let selectedCube = null;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let functionMesh = null;
+        let customGeometries = [];
+        let functionCanvas2D = null;
+        let functionCtx2D = null;
+        
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+            
+            camera = new THREE.PerspectiveCamera(75, 
+                document.getElementById('cube-container').clientWidth / 
+                document.getElementById('cube-container').clientHeight, 
+                0.1, 10000);
+            camera.position.set(10, 8, 10);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(
+                document.getElementById('cube-container').clientWidth,
+                document.getElementById('cube-container').clientHeight
+            );
+            document.getElementById('cube-container').appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+         
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            scene.add(directionalLight);
+       
+            createInfinitePlatform();
+            
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+            
+            updateCube();
+            
+            animate();
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            // 初始化2D函数画布
+            init2DFunctionCanvas();
+            
+            // 添加事件监听器
+            setupEventListeners();
+        }
+       
+        function createInfinitePlatform() {
+            const gridSize = 750; // 扩大网格
+            const gridDivisions = 75;
+            const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0xcccccc);
+            scene.add(gridHelper);
+            
+            const planeGeometry = new THREE.PlaneGeometry(gridSize * 2, gridSize * 2);
+            const planeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xeeeeee, 
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            platform = new THREE.Mesh(planeGeometry, planeMaterial);
+            platform.rotation.x = -Math.PI / 2;
+            platform.position.y = -0.1;
+            scene.add(platform);
+        }
+       
+        function updateCube() {
+            while(cubeGroup.children.length > 0) { 
+                cubeGroup.remove(cubeGroup.children[0]); 
+            }
+            
+            const lengthValue = parseInt(document.getElementById('length').value) * 
+                               parseFloat(document.getElementById('length-unit').value);
+            const widthValue = parseInt(document.getElementById('width').value) * 
+                              parseFloat(document.getElementById('width-unit').value);
+            const heightValue = parseInt(document.getElementById('height').value) * 
+                               parseFloat(document.getElementById('height-unit').value);
+        
+            document.getElementById('length-value').textContent = document.getElementById('length').value;
+            document.getElementById('width-value').textContent = document.getElementById('width').value;
+            document.getElementById('height-value').textContent = document.getElementById('height').value;
+            
+            const volume = lengthValue * widthValue * heightValue;
+            const unit = getVolumeUnit();
+            document.getElementById('volume').textContent = volume.toLocaleString();
+            document.querySelector('.volume-display').innerHTML = 
+                `体积 = <span id="volume">${formatVolume(volume)}</span> ${unit}`;
+            
+            // 标记模式下显示小方块
+            if (markerMode) {
+                createSmallCubes(lengthValue, heightValue, widthValue);
+                return;
+            }
+            
+            const geometry = new THREE.BoxGeometry(lengthValue, heightValue, widthValue);
+           
+            const materials = [
+                new THREE.MeshPhongMaterial({ color: 0x4CAF50 }),
+                new THREE.MeshPhongMaterial({ color: 0x2196F3 }), 
+                new THREE.MeshPhongMaterial({ color: 0x9e9e9e }), 
+                new THREE.MeshPhongMaterial({ color: 0x9e9e9e }), 
+                new THREE.MeshPhongMaterial({ color: 0x9e9e9e }),
+                new THREE.MeshPhongMaterial({ color: 0x9e9e9e }) 
+            ];
+            
+            cube = new THREE.Mesh(geometry, materials);
+            cubeGroup.add(cube);
+            
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+            cubeGroup.add(line);
+            
+            const maxDimension = Math.max(lengthValue, widthValue, heightValue);
+            const cameraDistance = Math.max(10, maxDimension * 2);
+            camera.position.set(cameraDistance, cameraDistance/2, cameraDistance);
+            controls.update();
+            
+            if (layerMode) {
+                showLayers(heightValue);
+            }
+        }
+        
+        // 创建小方块
+        function createSmallCubes(length, height, width) {
+            smallCubes = [];
+            const unitSize = parseFloat(document.getElementById('length-unit').value);
+            
+            for (let x = 0; x < parseInt(document.getElementById('length').value); x++) {
+                for (let y = 0; y < parseInt(document.getElementById('height').value); y++) {
+                    for (let z = 0; z < parseInt(document.getElementById('width').value); z++) {
+                        const geometry = new THREE.BoxGeometry(unitSize, unitSize, unitSize);
+                        const material = new THREE.MeshPhongMaterial({ 
+                            color: 0x3498db,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        
+                        const smallCube = new THREE.Mesh(geometry, material);
+                        smallCube.position.set(
+                            x * unitSize - (length/2) + unitSize/2,
+                            y * unitSize - (height/2) + unitSize/2,
+                            z * unitSize - (width/2) + unitSize/2
+                        );
+                        
+                        smallCube.userData = { originalPosition: smallCube.position.clone(), index: {x, y, z} };
+                        cubeGroup.add(smallCube);
+                        smallCubes.push(smallCube);
+                        
+                        // 添加边框
+                        const edges = new THREE.EdgesGeometry(geometry);
+                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+                        line.position.copy(smallCube.position);
+                        cubeGroup.add(line);
+                    }
+                }
+            }
+        }
+        
+        // 选择小方块
+        function selectCube(cube) {
+            // 重置之前选中的方块颜色
+            if (selectedCube) {
+                selectedCube.material.color.set(0x3498db);
+            }
+            
+            selectedCube = cube;
+            selectedCube.material.color.set(0xe74c3c);
+            
+            // 打开注释模态窗口
+            document.getElementById('annotation-modal').style.display = 'flex';
+        }
+        
+        // 绘制函数图像
+        function plotFunction3D() {
+            // 清除之前的函数图像
+            if (functionMesh) {
+                scene.remove(functionMesh);
+            }
+            
+            const expression = document.getElementById('function-expression').value;
+            
+            // 创建函数曲面几何体
+            const geometry = new THREE.ParametricGeometry((u, v, target) => {
+                const x = (u - 0.5) * 20;
+                const z = (v - 0.5) * 20;
+                
+                try {
+                    // 使用Function构造函数动态计算y值
+                    const func = new Function('x', 'z', `return ${expression};`);
+                    const y = func(x, z);
+                    target.set(x, y, z);
+                } catch (error) {
+                    console.error('函数计算错误:', error);
+                    target.set(x, 0, z);
+                }
+            }, 50, 50);
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x9b59b6,
+                side: THREE.DoubleSide,
+                wireframe: false,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            functionMesh = new THREE.Mesh(geometry, material);
+            functionMesh.rotation.x = Math.PI / 2;
+            scene.add(functionMesh);
+            
+            // 关闭模态窗口
+            document.getElementById('function-modal').style.display = 'none';
+        }
+        
+        // 绘制2D函数图像
+        function plotFunction2D() {
+            const expression = document.getElementById('function-expression').value;
+            
+            try {
+                // 清除画布
+                functionCtx2D.clearRect(0, 0, functionCanvas2D.width, functionCanvas2D.height);
+                
+                // 设置坐标系
+                functionCtx2D.strokeStyle = '#000';
+                functionCtx2D.lineWidth = 1;
+                
+                // 绘制坐标轴
+                functionCtx2D.beginPath();
+                functionCtx2D.moveTo(0, functionCanvas2D.height / 2);
+                functionCtx2D.lineTo(functionCanvas2D.width, functionCanvas2D.height / 2);
+                functionCtx2D.stroke();
+                
+                functionCtx2D.beginPath();
+                functionCtx2D.moveTo(functionCanvas2D.width / 2, 0);
+                functionCtx2D.lineTo(functionCanvas2D.width / 2, functionCanvas2D.height);
+                functionCtx2D.stroke();
+                
+                // 绘制函数曲线
+                functionCtx2D.strokeStyle = '#3498db';
+                functionCtx2D.lineWidth = 2;
+                functionCtx2D.beginPath();
+                
+                const func = new Function('x', `return ${expression};`);
+                const scale = 50; // 缩放因子
+                const step = 0.1;
+                
+                for (let x = -functionCanvas2D.width/(2*scale); x < functionCanvas2D.width/(2*scale); x += step) {
+                    try {
+                        const y = func(x);
+                        const pixelX = x * scale + functionCanvas2D.width / 2;
+                        const pixelY = functionCanvas2D.height / 2 - y * scale;
+                        
+                        if (x === -functionCanvas2D.width/(2*scale)) {
+                            functionCtx2D.moveTo(pixelX, pixelY);
+                        } else {
+                            functionCtx2D.lineTo(pixelX, pixelY);
+                        }
+                    } catch (e) {
+                        console.error('函数计算错误:', e);
+                    }
+                }
+                
+                functionCtx2D.stroke();
+                
+                // 显示2D画布
+                functionCanvas2D.style.display = 'block';
+                
+            } catch (error) {
+                console.error('绘制2D函数错误:', error);
+                alert('无法绘制函数，请检查函数表达式是否正确。');
+            }
+            
+            // 关闭模态窗口
+            document.getElementById('function-modal').style.display = 'none';
+        }
+        
+        // 初始化2D函数画布
+        function init2DFunctionCanvas() {
+            functionCanvas2D = document.createElement('canvas');
+            functionCanvas2D.width = 600;
+            functionCanvas2D.height = 400;
+            functionCanvas2D.style.position = 'absolute';
+            functionCanvas2D.style.top = '100px';
+            functionCanvas2D.style.left = '50%';
+            functionCanvas2D.style.transform = 'translateX(-50%)';
+            functionCanvas2D.style.backgroundColor = 'white';
+            functionCanvas2D.style.border = '1px solid #ccc';
+            functionCanvas2D.style.borderRadius = '8px';
+            functionCanvas2D.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+            functionCanvas2D.style.zIndex = '100';
+            functionCanvas2D.style.display = 'none';
+            
+            document.body.appendChild(functionCanvas2D);
+            functionCtx2D = functionCanvas2D.getContext('2d');
+            
+            // 添加关闭按钮
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '关闭2D视图';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.top = '70px';
+            closeBtn.style.left = '50%';
+            closeBtn.style.transform = 'translateX(-50%)';
+            closeBtn.style.zIndex = '101';
+            closeBtn.style.padding = '8px 16px';
+            closeBtn.style.backgroundColor = '#e74c3c';
+            closeBtn.style.color = 'white';
+            closeBtn.style.border = 'none';
+            closeBtn.style.borderRadius = '4px';
+            closeBtn.style.cursor = 'pointer';
+            
+            closeBtn.addEventListener('click', function() {
+                functionCanvas2D.style.display = 'none';
+                this.style.display = 'none';
+            });
+            
+            document.body.appendChild(closeBtn);
+        }
+        
+        // 添加几何体
+        function addGeometry(type, size, color) {
+            let geometry;
+            
+            switch(type) {
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(size, 32, 32);
+                    break;
+                case 'cylinder':
+                    geometry = new THREE.CylinderGeometry(size, size, size * 2, 32);
+                    break;
+                case 'cone':
+                    geometry = new THREE.ConeGeometry(size, size * 2, 32);
+                    break;
+                case 'torus':
+                    geometry = new THREE.TorusGeometry(size, size/3, 16, 100);
+                    break;
+                case 'pyramid':
+                    geometry = new THREE.ConeGeometry(size, size * 2, 4);
+                    break;
+                case 'plane':
+                    geometry = new THREE.PlaneGeometry(size * 2, size * 2);
+                    break;
+                default:
+                    geometry = new THREE.BoxGeometry(size, size, size);
+            }
+            
+            const material = new THREE.MeshPhongMaterial({ color: color });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            // 随机位置
+            const gridSize = 750;
+            mesh.position.set(
+                (Math.random() - 0.5) * gridSize / 10,
+                size,
+                (Math.random() - 0.5) * gridSize / 10
+            );
+            
+            // 随机旋转
+            mesh.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            
+            scene.add(mesh);
+            customGeometries.push(mesh);
+            
+            // 关闭模态窗口
+            document.getElementById('developer-modal').style.display = 'none';
+        }
+      
+        function getVolumeUnit() {
+            const unit = document.getElementById('length-unit').value;
+            if (unit === '0.000001') return '立方微米';
+            if (unit === '0.001') return '立方毫米';
+            if (unit === '1') return '立方厘米';
+            if (unit === '10') return '立方分米';
+            if (unit === '100') return '立方米';
+            return '立方单位';
+        }
+        
+        function formatVolume(volume) {
+            if (volume > 1000000) {
+                return volume.toExponential(2);
+            }
+            return volume.toLocaleString();
+        }
+      
+        function showLayers(height) {
+            const layerHeight = height / parseInt(document.getElementById('height').value);
+            
+            for (let i = 0; i < currentLayer; i++) {
+                const layerGeometry = new THREE.BoxGeometry(
+                    parseInt(document.getElementById('length').value) * 
+                    parseFloat(document.getElementById('length-unit').value),
+                    layerHeight,
+                    parseInt(document.getElementById('width').value) * 
+                    parseFloat(document.getElementById('width-unit').value)
+                );
+                
+                const layerMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xff9800, 
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                const layer = new THREE.Mesh(layerGeometry, layerMaterial);
+                layer.position.y = (-height/2) + (i * layerHeight) + (layerHeight/2);
+                cubeGroup.add(layer);
+          
+                const layerEdges = new THREE.EdgesGeometry(layerGeometry);
+                const layerLine = new THREE.LineSegments(layerEdges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+                layerLine.position.y = (-height/2) + (i * layerHeight) + (layerHeight/2);
+                cubeGroup.add(layerLine);
+            }
+        }
+       
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+     
+        function onWindowResize() {
+            camera.aspect = document.getElementById('cube-container').clientWidth / 
+                           document.getElementById('cube-container').clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(
+                document.getElementById('cube-container').clientWidth,
+                document.getElementById('cube-container').clientHeight
+            );
+        }
+        
+        function setupEventListeners() {
+            // 原有事件监听
+            document.getElementById('length').addEventListener('input', updateCube);
+            document.getElementById('width').addEventListener('input', updateCube);
+            document.getElementById('height').addEventListener('input', updateCube);
+            
+            document.getElementById('length-unit').addEventListener('change', updateCube);
+            document.getElementById('width-unit').addEventListener('change', updateCube);
+            document.getElementById('height-unit').addEventListener('change', updateCube);
+            
+            document.getElementById('reset').addEventListener('click', function() {
+                document.getElementById('length').value = 8;
+                document.getElementById('width').value = 3;
+                document.getElementById('height').value = 5;
+                updateCube();
+            });
+            
+            document.getElementById('clear').addEventListener('click', function() {
+                document.getElementById('length').value = 1;
+                document.getElementById('width').value = 1;
+                document.getElementById('height').value = 1;
+                updateCube();
+            });
+            
+            document.getElementById('layer-view').addEventListener('click', function() {
+                layerMode = !layerMode;
+                if (layerMode) {
+                    currentLayer = parseInt(document.getElementById('height').value);
+                    this.style.background = '#2c3e50';
+                    this.textContent = '整体';
+                } else {
+                    this.style.background = '#9b59b6';
+                    this.textContent = '分层';
+                }
+                updateCube();
+            });
+            
+            document.getElementById('fullscreen').addEventListener('click', function() {
+                const elem = document.getElementById('cube-container');
+                if (!document.fullscreenElement) {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen();
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen();
+                    } else if (elem.msRequestFullscreen) {
+                        elem.msRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                }
+            });
+            
+            // 新功能事件监听
+            document.getElementById('marker-mode').addEventListener('click', function() {
+                markerMode = !markerMode;
+                if (markerMode) {
+                    this.style.background = '#2c3e50';
+                    this.textContent = '退出标记';
+                } else {
+                    this.style.background = '#f39c12';
+                    this.textContent = '标记模式';
+                }
+                updateCube();
+            });
+            
+            document.getElementById('function-mode').addEventListener('click', function() {
+                document.getElementById('function-modal').style.display = 'flex';
+            });
+            
+            document.getElementById('developer-mode').addEventListener('click', function() {
+                document.getElementById('developer-modal').style.display = 'flex';
+            });
+            
+            document.getElementById('math-problems').addEventListener('click', function() {
+                document.getElementById('math-problems-modal').style.display = 'flex';
+            });
+            
+            document.getElementById('plot-3d').addEventListener('click', plotFunction3D);
+            document.getElementById('plot-2d').addEventListener('click', plotFunction2D);
+            
+            document.getElementById('add-geometry').addEventListener('click', function() {
+                const type = document.querySelector('.geometry-btn.active')?.dataset.type || 'sphere';
+                const size = parseInt(document.getElementById('geo-size').value);
+                const color = document.getElementById('geo-color').value;
+                addGeometry(type, size, color);
+            });
+            
+            // 常见函数按钮
+            document.querySelectorAll('.function-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('function-expression').value = this.dataset.func;
+                });
+            });
+            
+            // 数学题目按钮
+            document.querySelectorAll('.math-problem-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('length').value = this.dataset.length;
+                    document.getElementById('width').value = this.dataset.width;
+                    document.getElementById('height').value = this.dataset.height;
+                    updateCube();
+                    document.getElementById('math-problems-modal').style.display = 'none';
+                });
+            });
+            
+            // 关闭模态窗口
+            document.querySelectorAll('.close-modal').forEach(closeBtn => {
+                closeBtn.addEventListener('click', function() {
+                    this.closest('.modal').style.display = 'none';
+                });
+            });
+            
+            // 几何体选择
+            document.querySelectorAll('.geometry-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.geometry-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // 小方块选择（射线检测）
+            renderer.domElement.addEventListener('dblclick', onDoubleClick);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            
+            // 初始化注释画布
+            initAnnotationCanvas();
+        }
+        
+        function onDoubleClick(event) {
+            if (!markerMode) return;
+            
+            // 计算鼠标位置归一化设备坐标
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+            mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+            
+            // 射线投射
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // 检测与小方块的交互
+            const intersects = raycaster.intersectObjects(smallCubes);
+            
+            if (intersects.length > 0) {
+                selectCube(intersects[0].object);
+            }
+        }
+        
+        function onMouseDown(event) {
+            if (!markerMode) return;
+            
+            // 计算鼠标位置归一化设备坐标
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+            mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+            
+            // 射线投射
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // 检测与小方块的交互
+            const intersects = raycaster.intersectObjects(smallCubes);
+            
+            if (intersects.length > 0) {
+                isDragging = true;
+                selectedCube = intersects[0].object;
+                selectedCube.material.color.set(0xe74c3c);
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!isDragging || !selectedCube) return;
+            
+            const deltaMove = {
+                x: event.clientX - previousMousePosition.x,
+                y: event.clientY - previousMousePosition.y
+            };
+            
+            // 根据鼠标移动更新方块位置
+            const worldDirection = new THREE.Vector3();
+            camera.getWorldDirection(worldDirection);
+            
+            // 计算移动方向（基于相机视角）
+            const moveX = deltaMove.x * 0.01;
+            const moveY = -deltaMove.y * 0.01;
+            
+            // 应用移动
+            selectedCube.position.x += moveX;
+            selectedCube.position.y += moveY;
+            
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+        
+        function onMouseUp() {
+            isDragging = false;
+        }
+        
+        function initAnnotationCanvas() {
+            const canvas = document.getElementById('annotation-canvas');
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            let currentTool = 'pen';
+            
+            // 设置画布样式
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#000000';
+            
+            // 工具选择
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTool = this.dataset.tool;
+                });
+            });
+            
+            // 绘图功能
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                if (currentTool === 'pen') {
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                } else if (currentTool === 'eraser') {
+                    ctx.clearRect(e.offsetX - 10, e.offsetY - 10, 20, 20);
+                }
+                
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            }
+            
+            // 鼠标事件
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            });
+            
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+            canvas.addEventListener('mouseout', () => isDrawing = false);
+            
+            // 清除画布
+            document.getElementById('clear-annotation').addEventListener('click', function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+            
+            // 保存注释
+            document.getElementById('save-annotation').addEventListener('click', function() {
+                if (selectedCube) {
+                    // 这里可以将注释与选中的方块关联起来
+                    // 例如，将画布内容转换为图像并作为纹理应用到方块上
+                    const dataURL = canvas.toDataURL();
+                    
+                    // 创建纹理
+                    const texture = new THREE.TextureLoader().load(dataURL);
+                    selectedCube.material.map = texture;
+                    selectedCube.material.needsUpdate = true;
+                    
+                    // 关闭模态窗口
+                    document.getElementById('annotation-modal').style.display = 'none';
+                }
+            });
+        }
+     
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+        });
+    </script>
+</body>
+</html>
