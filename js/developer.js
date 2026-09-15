@@ -1,30 +1,30 @@
 // 开发者模式模块：创建几何体（支持 8 种图形 + 小数尺寸 + 位置/旋转 + 自动落地）
 
-function buildGeometry(type, sz) {
+function buildGeometry(type, sz, sides) {
     const x = sz.x, y = sz.y, z = sz.z;
+    const s = sides || 6;
     switch (type) {
         case 'sphere':
             return new THREE.SphereGeometry(x, 32, 32);
         case 'cylinder':
-            return new THREE.CylinderGeometry(x, x, y, 32);
+            return new THREE.CylinderGeometry(x, x, y, s);
         case 'cone':
-            return new THREE.ConeGeometry(x, y, 32);
+            return new THREE.ConeGeometry(x, y, s);
         case 'pyramid':
-            return new THREE.ConeGeometry(x, y, 4);
+            return new THREE.ConeGeometry(x, y, s);
         case 'prism':
-            return new THREE.CylinderGeometry(x, x, y, 6);
+            return new THREE.CylinderGeometry(x, x, y, s);
         case 'torus':
             return new THREE.TorusGeometry(x, z, 16, 100);
         case 'plane':
             return new THREE.PlaneGeometry(x * 2, z * 2);
-        case 'box':
         default:
             return new THREE.BoxGeometry(x, y, z);
     }
 }
 
-function addGeometry(type, sz, color, pos, rotDeg) {
-    const geometry = buildGeometry(type, sz);
+function addGeometry(type, sz, color, pos, rotDeg, sides) {
+    const geometry = buildGeometry(type, sz, sides);
     const material = new THREE.MeshPhongMaterial({ color: color });
     const mesh = new THREE.Mesh(geometry, material);
 

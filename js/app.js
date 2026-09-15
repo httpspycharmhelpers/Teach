@@ -164,18 +164,14 @@ function setupEventListeners() {
     });
 
     document.getElementById('marker-mode').addEventListener('click', function() {
-        markerMode = !markerMode;
-        document.getElementById('marker-controls').style.display = markerMode ? 'block' : 'none';
-        if (markerMode) {
+        if (!markerMode) {
             this.style.background = '#2c3e50';
             this.textContent = '退出标记';
-            setMarkerTool('move');
+            setMarkerMode(true);
         } else {
             this.style.background = '#f39c12';
             this.textContent = '标记模式';
-            // 退出时恢复整体形状
-            selectedCubes.forEach(c => setCubeColor(c, 0x3498db));
-            selectedCubes = [];
+            setMarkerMode(false);
         }
         updateCube();
     });
@@ -223,7 +219,23 @@ function setupEventListeners() {
             y: parseFloat(document.getElementById('geo-rot-y').value) || 0,
             z: parseFloat(document.getElementById('geo-rot-z').value) || 0
         };
-        addGeometry(type, sz, color, pos, rotDeg);
+        const sides = parseInt(document.getElementById('geo-sides').value) || 6;
+        addGeometry(type, sz, color, pos, rotDeg, sides);
+    });
+
+    // 选择几何体类型时，仅对棱柱/金字塔显示边数滑块
+    document.querySelectorAll('.geometry-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.geometry-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const showSides = this.dataset.type === 'prism' || this.dataset.type === 'pyramid' ||
+                              this.dataset.type === 'cylinder' || this.dataset.type === 'cone';
+            document.getElementById('sides-group').style.display = showSides ? 'block' : 'none';
+        });
+    });
+
+    document.getElementById('geo-sides').addEventListener('input', function() {
+        document.getElementById('geo-sides-value').textContent = this.value;
     });
 
     document.getElementById('clear-geometry').addEventListener('click', clearGeometries);
@@ -275,24 +287,28 @@ function setupEventListeners() {
         });
     });
 
-    document.querySelectorAll('.geometry-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.geometry-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerup', onPointerUp);
     renderer.domElement.addEventListener('pointerleave', onPointerUp);
 
     // 标记工具栏
+    document.getElementById('marker-select-confirm').addEventListener('click', confirmSelection);
     document.getElementById('marker-delete').addEventListener('click', deleteSelectedCube);
     document.getElementById('marker-note').addEventListener('click', onMarkerNote);
     document.getElementById('marker-clear').addEventListener('click', clearMarkedCubes);
     document.getElementById('marker-apply').addEventListener('click', applyMarkerSize);
     document.getElementById('marker-rotate-btn').addEventListener('click', rotateSelectedByAngle);
+
+    // 备注模态窗口
+    document.getElementById('note-save').addEventListener('click', saveNote);
+    document.getElementById('note-cancel').addEventListener('click', function() {
+        document.getElementById('note-modal').style.display = 'none';
+        currentNoteCube = null;
+    });
+    document.getElementById('note-image-input').addEventListener('change', function() {
+        handleNoteImage(this);
+    });
 
     initAnnotationCanvas();
 }

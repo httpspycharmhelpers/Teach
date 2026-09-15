@@ -35,44 +35,37 @@ function formatVolume(volume) {
     return volume.toLocaleString();
 }
 
-// 创建竖直的 Y 轴（固定在场景，穿过平台中心，长长方体贴合）
+// 创建竖直的 Y 轴（青色细线，贯穿平台上下）
 function createYAxis() {
     const axisGroup = new THREE.Group();
     axisGroup.name = 'y-axis';
     scene.add(axisGroup);
 
-    const length = 1000;
-    const axisMaterial = new THREE.LineBasicMaterial({ color: 0x2c3e50, linewidth: 2 });
+    const extent = 60;
+    const axisMat = new THREE.LineBasicMaterial({ color: 0x00cccc, linewidth: 1 });
     const axisPoints = [
-        new THREE.Vector3(0, -0.1, 0),
-        new THREE.Vector3(0, length, 0)
+        new THREE.Vector3(0, -extent, 0),
+        new THREE.Vector3(0, extent, 0)
     ];
     const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPoints);
-    const axisLine = new THREE.Line(axisGeo, axisMaterial);
-    axisGroup.add(axisLine);
+    axisGroup.add(new THREE.Line(axisGeo, axisMat));
 
-    // 箭头（顶部锥体，顶端对齐）
-    const coneGeo = new THREE.ConeGeometry(0.4, 1, 8);
-    const coneMat = new THREE.MeshPhongMaterial({ color: 0x2c3e50 });
-    const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.y = length;
-    axisGroup.add(cone);
-
-    // 坐标标签（用 CSS2D 太复杂，直接用 Sprite）
+    // Y 标签（青色 Sprite）
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#2c3e50';
-    ctx.font = 'bold 40px sans-serif';
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.fillStyle = '#00cccc';
+    ctx.font = 'bold 48px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Y', 32, 32);
     const texture = new THREE.CanvasTexture(canvas);
     const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(2, 2, 1);
-    sprite.position.set(0, length + 1.5, 0);
+    sprite.scale.set(1.5, 1.5, 1);
+    sprite.position.set(0, extent + 1, 0);
     axisGroup.add(sprite);
 
     return axisGroup;
@@ -181,16 +174,43 @@ function createSmallCubes(length, height, width) {
 
 // ============ 标记模式：选择 / 拖拽 / 尺寸 / 旋转 / 备注 / 删除 ============
 
-const SELECT_COLOR = 0xe74c3c;
-const MULTI_SELECT_COLOR = 0xff9800;
-let selectedCubes = [];      // 标记模式下选中的小方块（多选）
-let currentTool = 'move';    // move | resize | rotate
-let rotateAxis = 'y';
+const SELECT_COLOR = 0xf1c40f;  // 选中=黄色
+const DESELECT_COLOR = 0x3498db; // 未选中=蓝色
+let selectedCubes = [];
+let currentTool = 'select';  // select | move | resize | rotate
 
 function setMarkerTool(tool) {
     currentTool = tool;
     document.querySelectorAll('.marker-tool-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.marker-tool-btn[data-tool="' + tool + '"]').forEach(b => b.classList.add('active'));
+}
+
+// 进入/退出标记模式（标记模式下仍可旋转视角，只在拖拽方块时临时禁用 OrbitControls）
+function setMarkerMode(active) {
+    markerMode = active;
+    document.getElementById('marker-controls').style.display = active ? 'flex' : 'none';
+    if (active) {
+        setMarkerTool('select');
+    } else {
+        selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
+        selectedCubes = [];
+        syncSelection();
+    }
+}
+
+// 确认所有更改：所有小方块恢复蓝色初始模样，取消选中
+function confirmSelection() {
+    selectedCubes.forEach(c => {
+        setCubeColor(c, DESELECT_COLOR);
+        // 恢复原始位置
+        if (c.userData && c.userData.originalPosition) {
+            c.position.copy(c.userData.originalPosition);
+        }
+        c.rotation.set(0, 0, 0);
+        c.scale.set(1, 1, 1);
+    });
+    selectedCubes = [];
+    syncSelection();
 }
 
 // 转换事件坐标到 NDC，支持触摸
@@ -217,39 +237,47 @@ function pickSmallCube(clientX, clientY) {
 
 function setCubeColor(cube, color) {
     const materials = Array.isArray(cube.material) ? cube.material : [cube.material];
-    materials.forEach(m => m.color.set(color));
-    // 边框颜色跟随（edges line 在 cubeGroup 里，配套查找）
-    cube.visible = true;
+    materials.forEach(m => {
+        m.color.set(color);
+        // 选中时加发光，取消时去掉
+        if (color === SELECT_COLOR) {
+            m.emissive = new THREE.Color(0x333300);
+        } else if (color === DESELECT_COLOR) {
+            m.emissive = new THREE.Color(0x000000);
+        }
+    });
 }
 
 function syncSelection() {
     const toolbar = document.getElementById('marker-controls');
     if (!toolbar) return;
+    const countEl = document.getElementById('marker-count');
     if (selectedCubes.length === 0) {
-        document.getElementById('marker-count').textContent = '未选中';
+        countEl.textContent = '未选中';
     } else {
-        document.getElementById('marker-count').textContent = '已选 ' + selectedCubes.length + ' 个';
+        countEl.textContent = '已选 ' + selectedCubes.length + ' 个';
+    }
+    // 更新备注按钮状态
+    const noteBtn = document.getElementById('marker-note');
+    if (noteBtn) {
+        noteBtn.disabled = selectedCubes.length === 0;
+        noteBtn.style.opacity = selectedCubes.length === 0 ? 0.5 : 1;
     }
 }
 
-// 选中/取消：带 ctrl/meta 时多选，否则单选
 function toggleCubeSelection(cube, event) {
     const multiSel = event && (event.ctrlKey || event.metaKey);
     const idx = selectedCubes.indexOf(cube);
     if (idx >= 0) {
         selectedCubes.splice(idx, 1);
-        setCubeColor(cube, 0x3498db);
+        setCubeColor(cube, DESELECT_COLOR);
     } else {
         if (!multiSel) {
-            // 非多选时点选单个
-            selectedCubes.forEach(c => setCubeColor(c, 0x3498db));
+            selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
             selectedCubes = [];
         }
         selectedCubes.push(cube);
         setCubeColor(cube, SELECT_COLOR);
-    }
-    if (selectedCubes.length >= 2) {
-        selectedCubes.forEach(c => setCubeColor(c, MULTI_SELECT_COLOR));
     }
     syncSelection();
 }
@@ -261,29 +289,39 @@ function onPointerDown(event) {
 
     if (cube) {
         event.stopPropagation();
-        // 单击选中/取消
-        isDragging = true;
-        selectedCube = cube;
+        // 临时禁用 OrbitControls，避免点击/拖拽方块时视角跟着旋转
+        if (controls) controls.enabled = false;
         const idx = selectedCubes.indexOf(cube);
-        if (idx < 0) {
-            if (!event.ctrlKey && !event.metaKey) {
-                selectedCubes.forEach(c => setCubeColor(c, 0x3498db));
-                selectedCubes = [];
+        if (currentTool === 'select') {
+            // 选择工具：点击切换选中/取消
+            if (idx >= 0) {
+                selectedCubes.splice(idx, 1);
+                setCubeColor(cube, DESELECT_COLOR);
+            } else {
+                selectedCubes.push(cube);
+                setCubeColor(cube, SELECT_COLOR);
             }
-            selectedCubes.push(cube);
-            setCubeColor(cube, SELECT_COLOR);
-        }
-        if (selectedCubes.length >= 2) {
-            selectedCubes.forEach(c => setCubeColor(c, MULTI_SELECT_COLOR));
+        } else {
+            // 移动/缩放/旋转工具：点击选中并开始拖拽
+            isDragging = true;
+            selectedCube = cube;
+            if (idx < 0) {
+                if (!event.ctrlKey && !event.metaKey) {
+                    selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
+                    selectedCubes = [];
+                }
+                selectedCubes.push(cube);
+                setCubeColor(cube, SELECT_COLOR);
+            }
+            previousMousePosition = { x: ndc.clientX, y: ndc.clientY };
         }
         syncSelection();
-        previousMousePosition = { x: ndc.clientX, y: ndc.clientY };
         return;
     }
 
-    // 点击空白：清除选中
-    if (!isDragging) {
-        selectedCubes.forEach(c => setCubeColor(c, 0x3498db));
+    // 点击空白：清除所有选中
+    if (currentTool === 'select') {
+        selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
         selectedCubes = [];
         syncSelection();
     }
@@ -304,9 +342,9 @@ function onPointerMove(event) {
 
     if (currentTool === 'rotate') {
         selectedCubes.forEach(c => {
-            if (rotateAxis === 'y') c.rotation.y += deltaMove.x * 0.02;
-            else if (rotateAxis === 'x') c.rotation.x += deltaMove.x * 0.02;
-            else c.rotation.z += deltaMove.x * 0.02;
+            // 水平拖动绕 Y 轴旋转，垂直拖动绕 X 轴旋转
+            c.rotation.y += deltaMove.x * 0.02;
+            c.rotation.x += deltaMove.y * 0.02;
         });
     } else {
         // 移动（吸附到单元网格）
@@ -324,6 +362,8 @@ function onPointerMove(event) {
 function onPointerUp() {
     isDragging = false;
     previousMousePosition = { x: 0, y: 0 };
+    // 恢复 OrbitControls 以便旋转视角
+    if (controls) controls.enabled = true;
 }
 
 function showLayers(height) {
@@ -374,21 +414,64 @@ function deleteSelectedCube() {
 }
 
 // 给选中的小方块添加备注
+// 备注功能：支持图片+文字的模态编辑器
+let currentNoteCube = null;
+
 function onMarkerNote() {
     if (selectedCubes.length === 0) {
         alert('请先选择小方块再添加备注');
         return;
     }
-    const note = prompt('为选中的 ' + selectedCubes.length + ' 个小方块添加备注：');
-    if (note) {
-        selectedCubes.forEach(c => {
-            c.userData.note = note;
-        });
-        alert('备注已添加');
+    currentNoteCube = selectedCubes[0]; // 备注只对第一个选中的方块
+    const modal = document.getElementById('note-modal');
+    const textarea = document.getElementById('note-text');
+    const preview = document.getElementById('note-image-preview');
+    const fileInput = document.getElementById('note-image-input');
+    
+    // 加载已有备注
+    const note = currentNoteCube.userData.note || {};
+    textarea.value = note.text || '';
+    if (note.image) {
+        preview.src = note.image;
+        preview.style.display = 'block';
+    } else {
+        preview.src = '';
+        preview.style.display = 'none';
     }
+    fileInput.value = '';
+    modal.style.display = 'flex';
 }
 
-// 清空全部小方块
+function saveNote() {
+    if (!currentNoteCube) return;
+    const text = document.getElementById('note-text').value;
+    const preview = document.getElementById('note-image-preview');
+    currentNoteCube.userData.note = {
+        text: text,
+        image: preview.src && preview.src !== window.location.href ? preview.src : null
+    };
+    // 标记有备注的方块加一个小标记
+    if (text || currentNoteCube.userData.note.image) {
+        currentNoteCube.material.emissive = new THREE.Color(0x004400);
+    } else {
+        currentNoteCube.material.emissive = new THREE.Color(0x000000);
+    }
+    document.getElementById('note-modal').style.display = 'none';
+    currentNoteCube = null;
+}
+
+function handleNoteImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('note-image-preview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
 function clearMarkedCubes() {
     if (smallCubes.length === 0) return;
     if (!confirm('确定清空全部小方块？')) return;

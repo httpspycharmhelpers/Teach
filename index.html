@@ -95,7 +95,8 @@
                 <!-- 标记模式工具栏 -->
                 <div id="marker-controls" class="marker-controls" style="display:none;">
                     <span id="marker-count" class="marker-count">未选中</span>
-                    <button class="marker-tool-btn active" data-tool="move">移动</button>
+                    <button class="marker-tool-btn active" data-tool="select" title="鼠标选择模式">选择</button>
+                    <button class="marker-tool-btn" data-tool="move">移动</button>
                     <button class="marker-tool-btn" data-tool="resize">缩放</button>
                     <button class="marker-tool-btn" data-tool="rotate">旋转</button>
                     <input id="marker-size-input" type="number" class="marker-size-input" value="1" step="0.1" min="0.1" placeholder="尺寸">
@@ -107,6 +108,7 @@
                     <button id="marker-delete" class="marker-action-btn" title="删除选中">删除</button>
                     <button id="marker-note" class="marker-action-btn" title="添加备注">备注</button>
                     <button id="marker-clear" class="marker-action-btn" title="清空全部">清空</button>
+                    <button id="marker-select-confirm" class="marker-action-btn" title="确定所有更改，全部恢复初始模样">确定</button>
                 </div>
             </div>
             <div class="axis-label length-label">长</div>
@@ -187,6 +189,11 @@
                 <button class="geometry-btn" data-type="prism">棱柱</button>
                 <button class="geometry-btn" data-type="torus">圆环</button>
                 <button class="geometry-btn" data-type="plane">平面</button>
+            </div>
+            <div class="control-group" id="sides-group" style="display:none;">
+                <label for="geo-sides">边数 (棱柱/金字塔)：</label>
+                <input type="range" id="geo-sides" min="3" max="32" value="6" step="1">
+                <span id="geo-sides-value">6</span>
             </div>
             <div class="geo-num-row">
                 <div class="control-group">
@@ -269,6 +276,27 @@
             <div class="buttons" style="margin-top: 15px;">
                 <button id="save-annotation">保存注释</button>
                 <button id="clear-annotation">清除画布</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 备注模态窗口 -->
+    <div id="note-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加备注</h3>
+                <span class="close-modal" onclick="document.getElementById('note-modal').style.display='none'">&times;</span>
+            </div>
+            <div class="note-editor">
+                <label>文字备注：</label>
+                <textarea id="note-text" rows="4" placeholder="输入文字备注..."></textarea>
+                <label>添加图片：</label>
+                <input type="file" id="note-image-input" accept="image/*">
+                <img id="note-image-preview" class="note-preview" style="display:none;">
+                <div class="buttons" style="margin-top: 15px;">
+                    <button id="note-save">保存</button>
+                    <button id="note-cancel">取消</button>
+                </div>
             </div>
         </div>
     </div>
