@@ -1,4 +1,6 @@
-// 函数可视化模块：2D/3D 函数图像绘制
+// 函数可视化模块：2D/3D 函数图像绘制（2D 固定面板 + 人性网格 + 可拖拽）
+
+// =================== 3D 曲面 ===================
 function plotFunction3D() {
     if (functionMesh) {
         scene.remove(functionMesh);
@@ -11,11 +13,11 @@ function plotFunction3D() {
         const z = (v - 0.5) * 20;
 
         try {
-            const func = new Function('x', 'z', `return ${expression};`);
+            const func = new Function('x', 'z', 'return ' + expression + ';');
             const y = func(x, z);
-            target.set(x, y, z);
+            target.set(x, isFinite(y) ? y : 0, z);
         } catch (error) {
-            console.error('函数计算错误:', error);
+            console.error('3D 函数计算错误:', error);
             target.set(x, 0, z);
         }
     }, 50, 50);
@@ -23,7 +25,6 @@ function plotFunction3D() {
     const material = new THREE.MeshPhongMaterial({
         color: 0x9b59b6,
         side: THREE.DoubleSide,
-        wireframe: false,
         transparent: true,
         opacity: 0.8
     });
@@ -31,102 +32,176 @@ function plotFunction3D() {
     functionMesh = new THREE.Mesh(geometry, material);
     functionMesh.rotation.x = Math.PI / 2;
     scene.add(functionMesh);
-
-    document.getElementById('function-modal').style.display = 'none';
 }
 
+// =================== 2D 曲面（人性化坐标系） ===================
 function plotFunction2D() {
-    const expression = document.getElementById('function-expression').value;
+    var panel = document.getElementById('plot2d-panel');
+    var canvas = document.getElementById('plot2d-canvas');
+    if (!panel || !canvas) return;
 
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width;
+    var H = canvas.height;
+    var expression = document.getElementById('function-expression').value;
+
+    // 2D 只看 x 方向，z 固定为 0
+    var func;
     try {
-        functionCtx2D.clearRect(0, 0, functionCanvas2D.width, functionCanvas2D.height);
-
-        functionCtx2D.strokeStyle = '#000';
-        functionCtx2D.lineWidth = 1;
-
-        functionCtx2D.beginPath();
-        functionCtx2D.moveTo(0, functionCanvas2D.height / 2);
-        functionCtx2D.lineTo(functionCanvas2D.width, functionCanvas2D.height / 2);
-        functionCtx2D.stroke();
-
-        functionCtx2D.beginPath();
-        functionCtx2D.moveTo(functionCanvas2D.width / 2, 0);
-        functionCtx2D.lineTo(functionCanvas2D.width / 2, functionCanvas2D.height);
-        functionCtx2D.stroke();
-
-        functionCtx2D.strokeStyle = '#3498db';
-        functionCtx2D.lineWidth = 2;
-        functionCtx2D.beginPath();
-
-        const func = new Function('x', `return ${expression};`);
-        const scale = 50;
-        const step = 0.1;
-
-        for (let x = -functionCanvas2D.width / (2 * scale); x < functionCanvas2D.width / (2 * scale); x += step) {
-            try {
-                const y = func(x);
-                const pixelX = x * scale + functionCanvas2D.width / 2;
-                const pixelY = functionCanvas2D.height / 2 - y * scale;
-
-                if (x === -functionCanvas2D.width / (2 * scale)) {
-                    functionCtx2D.moveTo(pixelX, pixelY);
-                } else {
-                    functionCtx2D.lineTo(pixelX, pixelY);
-                }
-            } catch (e) {
-                console.error('函数计算错误:', e);
-            }
-        }
-
-        functionCtx2D.stroke();
-
-        functionCanvas2D.style.display = 'block';
-
-    } catch (error) {
-        console.error('绘制2D函数错误:', error);
-        alert('无法绘制函数，请检查函数表达式是否正确。');
+        func = new Function('x', 'z', 'return ' + expression + ';');
+    } catch (e) {
+        alert('函数表达式语法错误：' + e.message);
+        return;
     }
 
-    document.getElementById('function-modal').style.display = 'none';
+    // 绘图范围
+    var xMin = -10, xMax = 10, scale = 25;
+    var pad = 60; // 轴文字空间
+
+    // 预算 y 范围（采样找 min/max）
+    var yVals = [];
+    for (var x = xMin; x <= xMax; x += 0.2) {
+        var y;
+        try { y = func(x, 0); } catch (err) { continue; }
+        if (isFinite(y) && Math.abs(y) < 1e6) yVals.push(y);
+    }
+    var yMinV = Math.min.apply(null, yVals);
+    var yMaxV = Math.max.apply(null, yVals);
+    var yPad = (yMaxV - yMinV) * 0.12 || 1;
+    var yMin = yMinV - yPad;
+    var yMax = yMaxV + yPad;
+    // 自动缩放 scale
+    scale = Math.min((W - pad * 2) / (xMax - xMin), (H - pad * 2) / (yMax - yMin));
+    scale = Math.min(scale, 60); // cap
+
+    var cx = W / 2, cy = H / 2; // 画布中心
+
+    function toPixelX(x) { return cx + x * scale; }
+    function toPixelY(y) { return cy - y * scale; }
+
+    // 背景
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 网格
+    ctx.strokeStyle = '#e8e8e8';
+    ctx.lineWidth = 0.5;
+    for (var gx = Math.ceil(xMin); gx <= Math.floor(xMax); gx++) {
+        var px = toPixelX(gx);
+        ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, H - pad); ctx.stroke();
+    }
+    for (var gy = Math.ceil(yMin); gy <= Math.floor(yMax); gy++) {
+        var py = toPixelY(gy);
+        ctx.beginPath(); ctx.moveTo(pad, py); ctx.lineTo(W - pad, py); ctx.stroke();
+    }
+
+    // 坐标轴
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(pad, toPixelY(0)); ctx.lineTo(W - pad, toPixelY(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(toPixelX(0), pad); ctx.lineTo(toPixelX(0), H - pad); ctx.stroke();
+
+    // 刻度数字
+    ctx.fillStyle = '#555';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    for (var gx = Math.ceil(xMin); gx <= Math.floor(xMax); gx++) {
+        if (gx === 0) continue;
+        ctx.fillText(gx, toPixelX(gx), toPixelY(0) + 15);
+    }
+    ctx.textAlign = 'right';
+    for (var gy = Math.ceil(yMin); gy <= Math.floor(yMax); gy++) {
+        if (gy === 0) continue;
+        ctx.fillText(gy, toPixelX(0) - 6, toPixelY(gy) + 4);
+    }
+
+    // 轴标签
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x', W - pad + 18, toPixelY(0) + 4);
+    ctx.textAlign = 'center';
+    ctx.fillText('y', toPixelX(0), pad - 10);
+
+    // 函数曲线
+    ctx.strokeStyle = '#3498db';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    var started = false;
+    for (var x = xMin; x <= xMax; x += 0.05) {
+        var y;
+        try { y = func(x, 0); } catch (err) { continue; }
+        if (!isFinite(y) || Math.abs(y) > 1e6) { started = false; continue; }
+        var px = toPixelX(x), py = toPixelY(y);
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // 公式标题
+    ctx.fillStyle = '#8e44ad';
+    ctx.font = 'italic 13px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('y = ' + expression.replace(/\*/g, '·'), pad + 4, pad - 4);
+
+    // 显示面板
+    panel.style.display = 'block';
 }
 
-// 初始化2D函数画布
-function init2DFunctionCanvas() {
-    functionCanvas2D = document.createElement('canvas');
-    functionCanvas2D.width = 600;
-    functionCanvas2D.height = 400;
-    functionCanvas2D.style.position = 'absolute';
-    functionCanvas2D.style.top = '100px';
-    functionCanvas2D.style.left = '50%';
-    functionCanvas2D.style.transform = 'translateX(-50%)';
-    functionCanvas2D.style.backgroundColor = 'white';
-    functionCanvas2D.style.border = '1px solid #ccc';
-    functionCanvas2D.style.borderRadius = '8px';
-    functionCanvas2D.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-    functionCanvas2D.style.zIndex = '100';
-    functionCanvas2D.style.display = 'none';
+// =================== 初始化 2D 面板（固定位置 + 拖拽） ===================
+function init2DFunctionPanel() {
+    var panel = document.getElementById('plot2d-panel');
+    var header = panel.querySelector('.plot2d-header');
+    var closeBtn = panel.querySelector('.plot2d-close');
+    if (!panel || !header || !closeBtn) return;
 
-    document.body.appendChild(functionCanvas2D);
-    functionCtx2D = functionCanvas2D.getContext('2d');
+    // 默认位置：右下角
+    panel.style.position = 'fixed';
+    panel.style.right = '20px';
+    panel.style.bottom = '20px';
+    panel.style.left = '';
+    panel.style.top = '';
+    panel.style.transform = '';
 
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '关闭2D视图';
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.top = '70px';
-    closeBtn.style.left = '50%';
-    closeBtn.style.transform = 'translateX(-50%)';
-    closeBtn.style.zIndex = '101';
-    closeBtn.style.padding = '8px 16px';
-    closeBtn.style.backgroundColor = '#e74c3c';
-    closeBtn.style.color = 'white';
-    closeBtn.style.border = 'none';
-    closeBtn.style.borderRadius = '4px';
-    closeBtn.style.cursor = 'pointer';
-
-    closeBtn.addEventListener('click', function() {
-        functionCanvas2D.style.display = 'none';
-        this.style.display = 'none';
+    // 关闭按钮
+    closeBtn.addEventListener('click', function () {
+        panel.style.display = 'none';
     });
 
-    document.body.appendChild(closeBtn);
+    // 拖拽
+    var dragging = false, startX, startY, origLeft, origTop;
+    header.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        dragging = true;
+        header.setPointerCapture(e.pointerId);
+        // 从 right/bottom 转成 left/top 以支持拖拽
+        var rect = panel.getBoundingClientRect();
+        panel.style.left = rect.left + 'px';
+        panel.style.top = rect.top + 'px';
+        panel.style.right = '';
+        panel.style.bottom = '';
+        startX = e.clientX;
+        startY = e.clientY;
+        origLeft = rect.left;
+        origTop = rect.top;
+    });
+    header.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        panel.style.left = (origLeft + e.clientX - startX) + 'px';
+        panel.style.top = (origTop + e.clientY - startY) + 'px';
+    });
+    header.addEventListener('pointerup', function () {
+        dragging = false;
+    });
+
+    // 不让面板被其他点击关掉（阻止冒泡）
+    panel.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+}
+
+function clearFunction() {
+    if (functionMesh) {
+        scene.remove(functionMesh);
+        functionMesh = null;
+    }
+    document.getElementById('plot2d-panel').style.display = 'none';
 }

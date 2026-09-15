@@ -397,6 +397,212 @@
         .function-btn:hover {
             background: #8e44ad;
         }
+
+        /* ---- slider + number input row ---- */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="number"] {
+            width: 70px;
+            padding: 6px 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        /* ---- 开发者模式: 小数行 + 高级折叠 ---- */
+        .geo-num-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .geo-num-row label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.85rem;
+            color: #555;
+        }
+        .geo-num-row input[type="number"] {
+            width: 100%;
+            margin-top: 4px;
+        }
+        .geo-advanced {
+            margin-bottom: 15px;
+        }
+        .geo-advanced summary {
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding: 6px 0;
+        }
+
+        /* ---- geometry button active ---- */
+        .geometry-btn.active {
+            background: #2c3e50;
+            box-shadow: 0 0 0 2px #f39c12 inset;
+        }
+
+        /* ---- 题目分页页签 ---- */
+        .problem-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .problem-tab {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: #ecf0f1;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .problem-tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        /* ---- 题目答案显示 ---- */
+        .problem-answer {
+            background: #ecf0f1;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            line-height: 1.7;
+            font-size: 0.95rem;
+            border-left: 4px solid #2ecc71;
+        }
+        .problem-correct {
+            border-left-color: #2ecc71;
+            background: #f0fff4;
+        }
+
+        /* ---- 标记模式工具栏 ---- */
+        .marker-controls {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: rgba(255,255,255,0.92);
+            padding: 8px 12px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            z-index: 50;
+        }
+        .marker-count {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 70px;
+        }
+        .marker-tool-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+        }
+        .marker-tool-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .marker-size-input {
+            width: 56px;
+            padding: 5px 4px;
+            font-size: 0.85rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .marker-action-btn {
+            padding: 5px 8px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .marker-action-btn:hover {
+            opacity: 0.85;
+        }
+        #marker-note {
+            background: #2ecc71;
+        }
+        #marker-apply {
+            background: #9b59b6;
+        }
+        #marker-clear {
+            background: #e67e22;
+        }
+
+        /* ---- 2D 函数浮动画布 ---- */
+        .plot2d-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 580px;
+            max-width: 95vw;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            z-index: 200;
+            overflow: hidden;
+        }
+        .plot2d-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #3498db;
+            color: white;
+            cursor: move;
+            user-select: none;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .plot2d-close {
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        #plot2d-canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            touch-action: none;
+        }
+
+        /* ---- 提示文字 ---- */
+        .hint {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        /* ---- 位置/旋转行列 ---- */
+        .geo-num-row .control-group {
+            margin-bottom: 0;
+        }
+
+        /* ---- 响应式 ---- */
         @media (max-width: 1200px) {
             .container {
                 flex-direction: column;

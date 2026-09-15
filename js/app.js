@@ -45,6 +45,7 @@ function init() {
     scene.add(directionalLight);
 
     createInfinitePlatform();
+    createYAxis();
 
     cubeGroup = new THREE.Group();
     scene.add(cubeGroup);
@@ -55,7 +56,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    init2DFunctionCanvas();
+    init2DFunctionPanel();
 
     setupEventListeners();
 }
@@ -77,9 +78,32 @@ function onWindowResize() {
 }
 
 function setupEventListeners() {
-    document.getElementById('length').addEventListener('input', updateCube);
-    document.getElementById('width').addEventListener('input', updateCube);
-    document.getElementById('height').addEventListener('input', updateCube);
+    document.getElementById('length').addEventListener('input', function() {
+        document.getElementById('length-num').value = this.value;
+        updateCube();
+    });
+    document.getElementById('length-num').addEventListener('change', function() {
+        document.getElementById('length').value = this.value;
+        updateCube();
+    });
+
+    document.getElementById('width').addEventListener('input', function() {
+        document.getElementById('width-num').value = this.value;
+        updateCube();
+    });
+    document.getElementById('width-num').addEventListener('change', function() {
+        document.getElementById('width').value = this.value;
+        updateCube();
+    });
+
+    document.getElementById('height').addEventListener('input', function() {
+        document.getElementById('height-num').value = this.value;
+        updateCube();
+    });
+    document.getElementById('height-num').addEventListener('change', function() {
+        document.getElementById('height').value = this.value;
+        updateCube();
+    });
 
     document.getElementById('length-unit').addEventListener('change', updateCube);
     document.getElementById('width-unit').addEventListener('change', updateCube);
@@ -89,13 +113,19 @@ function setupEventListeners() {
         document.getElementById('length').value = 8;
         document.getElementById('width').value = 3;
         document.getElementById('height').value = 5;
+        document.getElementById('length-num').value = 8;
+        document.getElementById('width-num').value = 3;
+        document.getElementById('height-num').value = 5;
         updateCube();
     });
 
     document.getElementById('clear').addEventListener('click', function() {
-        document.getElementById('length').value = 1;
-        document.getElementById('width').value = 1;
-        document.getElementById('height').value = 1;
+        document.getElementById('length').value = 0.1;
+        document.getElementById('width').value = 0.1;
+        document.getElementById('height').value = 0.1;
+        document.getElementById('length-num').value = 0.1;
+        document.getElementById('width-num').value = 0.1;
+        document.getElementById('height-num').value = 0.1;
         updateCube();
     });
 
@@ -135,14 +165,25 @@ function setupEventListeners() {
 
     document.getElementById('marker-mode').addEventListener('click', function() {
         markerMode = !markerMode;
+        document.getElementById('marker-controls').style.display = markerMode ? 'block' : 'none';
         if (markerMode) {
             this.style.background = '#2c3e50';
             this.textContent = '退出标记';
+            setMarkerTool('move');
         } else {
             this.style.background = '#f39c12';
             this.textContent = '标记模式';
+            // 退出时恢复整体形状
+            selectedCubes.forEach(c => setCubeColor(c, 0x3498db));
+            selectedCubes = [];
         }
         updateCube();
+    });
+
+    document.querySelectorAll('.marker-tool-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            setMarkerTool(this.dataset.tool);
+        });
     });
 
     document.getElementById('function-mode').addEventListener('click', function() {
@@ -154,18 +195,38 @@ function setupEventListeners() {
     });
 
     document.getElementById('math-problems').addEventListener('click', function() {
+        if (!document.getElementById('math-problem-list').hasChildNodes()) {
+            renderMathProblems('base');
+        }
         document.getElementById('math-problems-modal').style.display = 'flex';
     });
 
     document.getElementById('plot-3d').addEventListener('click', plotFunction3D);
     document.getElementById('plot-2d').addEventListener('click', plotFunction2D);
+    document.getElementById('clear-function').addEventListener('click', clearFunction);
 
     document.getElementById('add-geometry').addEventListener('click', function() {
-        const type = document.querySelector('.geometry-btn.active')?.dataset.type || 'sphere';
-        const size = parseInt(document.getElementById('geo-size').value);
+        const type = document.querySelector('.geometry-btn.active')?.dataset.type || 'box';
+        const sz = {
+            x: Math.max(parseFloat(document.getElementById('geo-size-x').value) || 1, 0.1),
+            y: Math.max(parseFloat(document.getElementById('geo-size-y').value) || 1, 0.1),
+            z: Math.max(parseFloat(document.getElementById('geo-size-z').value) || 1, 0.1)
+        };
         const color = document.getElementById('geo-color').value;
-        addGeometry(type, size, color);
+        const pos = {
+            x: parseFloat(document.getElementById('geo-pos-x').value),
+            y: parseFloat(document.getElementById('geo-pos-y').value),
+            z: parseFloat(document.getElementById('geo-pos-z').value)
+        };
+        const rotDeg = {
+            x: parseFloat(document.getElementById('geo-rot-x').value) || 0,
+            y: parseFloat(document.getElementById('geo-rot-y').value) || 0,
+            z: parseFloat(document.getElementById('geo-rot-z').value) || 0
+        };
+        addGeometry(type, sz, color, pos, rotDeg);
     });
+
+    document.getElementById('clear-geometry').addEventListener('click', clearGeometries);
 
     document.querySelectorAll('.function-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -173,14 +234,39 @@ function setupEventListeners() {
         });
     });
 
-    document.querySelectorAll('.math-problem-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('length').value = this.dataset.length;
-            document.getElementById('width').value = this.dataset.width;
-            document.getElementById('height').value = this.dataset.height;
-            updateCube();
-            document.getElementById('math-problems-modal').style.display = 'none';
+    document.querySelectorAll('.problem-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.problem-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            renderMathProblems(this.dataset.level);
         });
+    });
+
+    // 动态题目按钮事件委托
+    document.getElementById('math-problem-list').addEventListener('click', function(e) {
+        const btn = e.target.closest('.math-problem-btn');
+        if (!btn) return;
+
+        document.getElementById('length').value = btn.dataset.length;
+        document.getElementById('width').value = btn.dataset.width;
+        document.getElementById('height').value = btn.dataset.height;
+        updateCube();
+
+        // 显示答案
+        const answerEl = document.getElementById('problem-answer');
+        const x = parseFloat(btn.dataset.length);
+        const y = parseFloat(btn.dataset.width);
+        const z = parseFloat(btn.dataset.height);
+        const volume = x * y * z;
+        const volumeStr = volume.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+        const question = btn.dataset.question;
+        answerEl.innerHTML =
+            '<strong>题目：</strong>' + question + '<br>' +
+            '<strong>思路：</strong>' + (btn.dataset.answer || 'V = 长×宽×高') + '<br>' +
+            '<strong>答案：</strong>体积 = ' + volumeStr + ' 立方单位';
+        answerEl.style.display = 'block';
+        answerEl.classList.remove('problem-wrong');
+        answerEl.classList.add('problem-correct');
     });
 
     document.querySelectorAll('.close-modal').forEach(closeBtn => {
@@ -196,10 +282,17 @@ function setupEventListeners() {
         });
     });
 
-    renderer.domElement.addEventListener('dblclick', onDoubleClick);
-    renderer.domElement.addEventListener('mousedown', onMouseDown);
-    renderer.domElement.addEventListener('mousemove', onMouseMove);
-    renderer.domElement.addEventListener('mouseup', onMouseUp);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerup', onPointerUp);
+    renderer.domElement.addEventListener('pointerleave', onPointerUp);
+
+    // 标记工具栏
+    document.getElementById('marker-delete').addEventListener('click', deleteSelectedCube);
+    document.getElementById('marker-note').addEventListener('click', onMarkerNote);
+    document.getElementById('marker-clear').addEventListener('click', clearMarkedCubes);
+    document.getElementById('marker-apply').addEventListener('click', applyMarkerSize);
+    document.getElementById('marker-rotate-btn').addEventListener('click', rotateSelectedByAngle);
 
     initAnnotationCanvas();
 }

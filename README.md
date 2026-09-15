@@ -8,13 +8,16 @@ An interactive math teaching tool built on Three.js, helping students intuitivel
 ## 功能特点 / Features
 
 - 3D 长方体可视化与交互 / Interactive 3D rectangular prism visualization
-- 实时体积计算与显示 / Real-time volume calculation & display
+- 固定竖直 Y 轴，长方体底部贴地、贴轴显示 / Fixed vertical Y axis, cuboid rests on the ground hugging the axis
+- 实时体积计算与显示（支持小数尺寸）/ Real-time volume calculation (decimal dimensions supported)
 - 多种单位转换（厘米、毫米、分米、米、微米）/ Multi-unit conversion (cm, mm, dm, m, µm)
+- 数字输入框 + 滑块双控，长宽高可输入小数 / Slider + numeric input for decimal length/width/height
 - 分层视图展示 / Layered view
-- 标记模式与注释功能 / Marker mode & annotation
-- 函数可视化（2D 和 3D）/ Function plotting (2D & 3D)
-- 开发者模式（添加自定义几何体）/ Developer mode (add custom geometry)
-- 数学题目练习 / Math problem drills
+- 标记模式：触屏/鼠标选中、多选、拖动、缩放、按角度旋转、删除以拼出不规则立体、备注 / Marker mode: pointer/touch selection, multi-select, drag, resize, rotate by angle, delete cubes to build irregular shapes, annotations
+- 函数可视化（2D 固定浮动画布，可拖拽、防误关；3D 曲面）/ Function plotting (fixed draggable 2D panel + 3D surface)
+- 开发者模式：8 种几何体、小数尺寸、位置/旋转参数、自动落地 / Developer mode: 8 shapes, decimal sizes, position/rotation params, auto ground placement
+- 数学题目练习：去重重编、按难度分类、展示答案 / Math drills: deduplicated, grouped by difficulty, answers revealed
+- 本地 Three.js + 国内 CDN 回退，断网/跨国网络不再白屏 / Bundled Three.js + npmmirror CDN fallback
 
 ## 项目结构 / Project Structure
 
@@ -26,11 +29,15 @@ Teach/
 ├── index.html            # 页面入口 / Entry point
 ├── css/
 │   └── style.css         # 全部样式 / Styles
+├── vendor/
+│   ├── three.min.js      # 本地化 Three.js（断网可用）/ Bundled Three.js
+│   └── OrbitControls.min.js
 ├── js/
 │   ├── app.js            # 主应用：全局状态、场景初始化、事件绑定
-│   ├── cubic.js          # 长方体可视化、分层、标记小方块、体积计算
-│   ├── functions.js      # 2D/3D 函数可视化
-│   ├── developer.js      # 开发者模式：自定义几何体
+│   ├── cubic.js          # 长方体可视化、Y轴、分层、标记小方块、体积计算
+│   ├── functions.js      # 2D/3D 函数可视化（2D 浮动画布可拖拽）
+│   ├── developer.js      # 开发者模式：8 种几何体、参数化创建
+│   ├── math.js           # 数学题目数据与渲染（去重/分难度/答案）
 │   └── annotation.js     # 注释画布
 ├── README.md             # 中文说明
 └── README_EN.md          # English
