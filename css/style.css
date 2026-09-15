@@ -1,0 +1,447 @@
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            overflow-x: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1600px;
+            width: 100%;
+        }
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .slider-container span {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            color: #3498db;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e0e0e0;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2980b9;
+        }
+        .unit-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .unit-selector select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            width: 100%;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            min-width: 80px;
+        }
+        #reset {
+            background: #e74c3c;
+            color: white;
+        }
+        #reset:hover {
+            background: #c0392b;
+        }
+        #clear {
+            background: #7f8c8d;
+            color: white;
+        }
+        #clear:hover {
+            background: #636e72;
+        }
+        #fullscreen {
+            background: #2ecc71;
+            color: white;
+        }
+        #fullscreen:hover {
+            background: #27ae60;
+        }
+        #layer-view {
+            background: #9b59b6;
+            color: white;
+        }
+        #layer-view:hover {
+            background: #8e44ad;
+        }
+        #marker-mode {
+            background: #f39c12;
+            color: white;
+        }
+        #marker-mode:hover {
+            background: #d35400;
+        }
+        #function-mode {
+            background: #16a085;
+            color: white;
+        }
+        #function-mode:hover {
+            background: #1abc9c;
+        }
+        #developer-mode {
+            background: #34495e;
+            color: white;
+        }
+        #developer-mode:hover {
+            background: #2c3e50;
+        }
+        #math-problems {
+            background: #e67e22;
+            color: white;
+        }
+        #math-problems:hover {
+            background: #d35400;
+        }
+        .visualization {
+            flex: 1;
+            min-width: 300px;
+            max-width: 1000px;
+            height: 600px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .volume-display {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .volume-display span {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        #cube-container {
+            width: 100%;
+            height: 500px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .axis-label {
+            position: absolute;
+            font-weight: bold;
+            color: #3498db;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 8px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .length-label {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .width-label {
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+        }
+        .height-label {
+            top: 10px;
+            left: 20px;
+        }
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        .social-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1400px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .chat-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #7f8c8d;
+        }
+        .tag {
+            background: #3498db;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        /* 模态窗口样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-modal {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        .function-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        .geometry-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .geometry-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .geometry-btn:hover {
+            background: #2980b9;
+        }
+        .annotation-canvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 10px;
+            background: white;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .tool-btn {
+            padding: 8px 12px;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tool-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .math-problem-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .math-problem-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-align: left;
+        }
+        .math-problem-btn:hover {
+            background: #2980b9;
+        }
+        .common-functions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .function-btn {
+            padding: 10px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 0.9rem;
+        }
+        .function-btn:hover {
+            background: #8e44ad;
+        }
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .controls, .visualization {
+                max-width: 100%;
+            }
+            .visualization {
+                height: 500px;
+            }
+            #cube-container {
+                height: 400px;
+            }
+            .social-bar {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .controls {
+                padding: 15px;
+            }
+            .slider-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            input[type="range"] {
+                width: 100%;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+            .volume-display {
+                font-size: 1.2rem;
+            }
+            .geometry-selector {
+                grid-template-columns: 1fr;
+            }
+            .common-functions {
+                grid-template-columns: 1fr;
+            }
+        }

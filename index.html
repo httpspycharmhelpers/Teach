@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化教学工具</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>可视化教学工具</h1>
+        <p>通过调整长、宽、高，直观理解长方体体积的计算原理</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label for="length">长:</label>
+                <div class="slider-container">
+                    <input type="range" id="length" min="1" max="1500" value="8" step="1">
+                    <span id="length-value">8</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="length-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="width">宽:</label>
+                <div class="slider-container">
+                    <input type="range" id="width" min="1" max="1500" value="3" step="1">
+                    <span id="width-value">3</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="width-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="height">高:</label>
+                <div class="slider-container">
+                    <input type="range" id="height" min="1" max="1500" value="5" step="1">
+                    <span id="height-value">5</span>
+                </div>
+                <div class="unit-selector">
+                    <select id="height-unit">
+                        <option value="0.000001">微米</option>
+                        <option value="0.001">毫米</option>
+                        <option value="1" selected>厘米</option>
+                        <option value="10">分米</option>
+                        <option value="100">米</option>
+                    </select>
+                </div>
+            </div>
+            <div class="buttons">
+                <button id="reset">还原</button>
+                <button id="clear">清空</button>
+                <button id="layer-view">分层</button>
+                <button id="marker-mode">标记模式</button>
+                <button id="function-mode">函数可视化</button>
+                <button id="developer-mode">开发者模式</button>
+                <button id="math-problems">数学题目</button>
+                <button id="fullscreen">全屏</button>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <div class="volume-display">
+                体积 = <span id="volume">120</span> 立方厘米
+            </div>
+            <div id="cube-container"></div>
+            <div class="axis-label length-label">长</div>
+            <div class="axis-label width-label">宽</div>
+            <div class="axis-label height-label">高</div>
+            <div class="instructions">
+                拖动滑块调整长方体的尺寸，观察体积的变化。使用鼠标拖动可以旋转视图。
+            </div>
+        </div>
+    </div>
+
+    <div class="social-bar">
+        <div class="user-info">
+            <div class="avatar">jS</div>
+            <div>数学可视化教学工具</div>
+        </div>
+        <div class="chat-info">
+            <span class="tag">教育科技</span>
+            <span>增强版 v2.0</span>
+        </div>
+    </div>
+
+    <!-- 函数可视化模态窗口 -->
+    <div id="function-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>函数可视化工具</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <input type="text" class="function-input" id="function-expression" placeholder="输入函数表达式，如: Math.sin(x) * Math.cos(z)" value="Math.sin(x) * Math.cos(z)">
+            <div class="common-functions">
+                <button class="function-btn" data-func="Math.sin(x)">sin(x)</button>
+                <button class="function-btn" data-func="Math.cos(x)">cos(x)</button>
+                <button class="function-btn" data-func="x*x">x²</button>
+                <button class="function-btn" data-func="Math.sqrt(x)">√x</button>
+                <button class="function-btn" data-func="Math.exp(x)">e^x</button>
+                <button class="function-btn" data-func="Math.log(x)">ln(x)</button>
+                <button class="function-btn" data-func="x*x + z*z">x² + z²</button>
+                <button class="function-btn" data-func="Math.sin(x) * Math.cos(z)">sin(x)cos(z)</button>
+                <button class="function-btn" data-func="Math.sin(x)">sin(x)</button>
+                <button class="function-btn" data-func="Math.cos(x)">cos(x)</button>
+                <button class="function-btn" data-func="Math.tan(x)">tan(x)</button>
+                <button class="function-btn" data-func="Math.exp(x)">e^x</button>
+                <button class="function-btn" data-func="Math.log(x)">ln(x)</button>
+                <button class="function-btn" data-func="Math.log10(x)">log10(x)</button>
+                <button class="function-btn" data-func="Math.sqrt(x)">√x</button>
+                <button class="function-btn" data-func="x*x">x²</button>
+                <button class="function-btn" data-func="x*x*x">x³</button>
+                <button class="function-btn" data-func="1/x">1/x</button>
+                <button class="function-btn" data-func="Math.abs(x)">|x|</button>
+                <button class="function-btn" data-func="Math.pow(x,2)">x^2</button>
+                <button class="function-btn" data-func="Math.pow(x,3)">x^3</button>
+                <button class="function-btn" data-func="Math.pow(2,x)">2^x</button>
+                <button class="function-btn" data-func="Math.sin(x)*Math.cos(z)">sin(x)cos(z)</button>
+                <button class="function-btn" data-func="x*x + z*z">x² + z²</button>
+                <button class="function-btn" data-func="Math.sin(Math.sqrt(x*x+z*z))">sin(√(x²+z²))</button>
+                <button class="function-btn" data-func="Math.exp(-(x*x+z*z)/10)">e^(-(x²+z²)/10)</button>
+                <button class="function-btn" data-func="Math.cos(x)*Math.sin(z)">cos(x)sin(z)</button>
+                <button class="function-btn" data-func="x*Math.sin(z) + z*Math.cos(x)">x·sin(z) + z·cos(x)</button>
+<button class="function-btn" data-func="Math.atan(x/z)">arctan(x/z)</button>
+<button class="function-btn" data-func="Math.sin(x)+Math.cos(z)">sin(x)+cos(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.sin(z)">sin(x)sin(z)</button>
+<button class="function-btn" data-func="Math.cos(x)*Math.cos(z)">cos(x)cos(z)</button>
+<button class="function-btn" data-func="Math.tan(x)*Math.tan(z)">tan(x)tan(z)</button>
+<button class="function-btn" data-func="x/Math.sqrt(1+z*z)">x/√(1+z²)</button>
+<button class="function-btn" data-func="z/Math.sqrt(1+x*x)">z/√(1+x²)</button>
+<button class="function-btn" data-func="Math.sin(x*x+z*z)">sin(x²+z²)</button>
+<button class="function-btn" data-func="Math.cos(x*x+z*z)">cos(x²+z²)</button>
+<button class="function-btn" data-func="Math.exp(Math.sin(x)+Math.cos(z))">e^(sin(x)+cos(z))</button>
+<button class="function-btn" data-func="Math.log(Math.abs(x)+Math.abs(z)+1)">ln(|x|+|z|+1)</button>
+<button class="function-btn" data-func="Math.sin(5*x)*Math.cos(5*z)/5">sin(5x)cos(5z)/5</button>
+<button class="function-btn" data-func="Math.sin(10*(x*x+z*z))/10">sin(10(x²+z²))/10</button>
+<button class="function-btn" data-func="x*z/10">x·z/10</button>
+<button class="function-btn" data-func="(x*x-z*z)/10">(x²-z²)/10</button>
+<button class="function-btn" data-func="Math.atan2(x,z)">arctan2(x,z)</button>
+<button class="function-btn" data-func="Math.hypot(x,z)">√(x²+z²)</button>
+<button class="function-btn" data-func="Math.sin(Math.hypot(x,z))">sin(√(x²+z²))</button>
+<button class="function-btn" data-func="Math.cos(Math.hypot(x,z))">cos(√(x²+z²))</button>
+<button class="function-btn" data-func="Math.exp(-Math.hypot(x,z)/5)">e^(-√(x²+z²)/5)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-z*z/10)">sin(x)e^(-z²/10)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.exp(-x*x/10)">cos(z)e^(-x²/10)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)*Math.exp(-(x*x+z*z)/20)">sin(x)cos(z)e^(-(x²+z²)/20)</button>
+<button class="function-btn" data-func="Math.sin(2*x)*Math.cos(2*z)">sin(2x)cos(2z)</button>
+<button class="function-btn" data-func="Math.sin(3*x)*Math.cos(3*z)">sin(3x)cos(3z)</button>
+<button class="function-btn" data-func="Math.sin(4*x)*Math.cos(4*z)">sin(4x)cos(4z)</button>
+<button class="function-btn" data-func="(Math.sin(x)+Math.sin(z))/2">(sin(x)+sin(z))/2</button>
+<button class="function-btn" data-func="(Math.cos(x)+Math.cos(z))/2">(cos(x)+cos(z))/2</button>
+<button class="function-btn" data-func="Math.max(Math.abs(x),Math.abs(z))">max(|x|,|z|)</button>
+<button class="function-btn" data-func="Math.min(Math.abs(x),Math.abs(z))">min(|x|,|z|)</button>
+<button class="function-btn" data-func="Math.abs(x)+Math.abs(z)">|x|+|z|</button>
+<button class="function-btn" data-func="Math.abs(x)-Math.abs(z)">|x|-|z|</button>
+<button class="function-btn" data-func="x>0?1:-1">sign(x)</button>
+<button class="function-btn" data-func="z>0?1:-1">sign(z)</button>
+<button class="function-btn" data-func="x>0?x*x:-x*x">x·|x|</button>
+<button class="function-btn" data-func="z>0?z*z:-z*z">z·|z|</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.sin(x)+Math.cos(z)*Math.cos(z)">sin²(x)+cos²(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)+Math.cos(x)*Math.sin(z)">sin(x)cos(z)+cos(x)sin(z)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.cos(z)-Math.cos(x)*Math.sin(z)">sin(x)cos(z)-cos(x)sin(z)</button>
+<button class="function-btn" data-func="Math.atan(Math.tan(x)+Math.tan(z))">arctan(tan(x)+tan(z))</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*x)*Math.cos(Math.PI*z)">sin(πx)cos(πz)</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*x)*Math.sin(Math.PI*z)">cos(πx)sin(πz)</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*x)*Math.sin(Math.PI*z)">sin(πx)sin(πz)</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*x)*Math.cos(Math.PI*z)">cos(πx)cos(πz)</button>
+<button class="function-btn" data-func="Math.sin(Math.PI*Math.sqrt(x*x+z*z))">sin(π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.cos(Math.PI*Math.sqrt(x*x+z*z))">cos(π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.exp(-Math.PI*Math.sqrt(x*x+z*z))">e^(-π√(x²+z²))</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-Math.abs(z))">sin(x)e^(-|z|)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.exp(-Math.abs(x))">cos(z)e^(-|x|)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.log(Math.abs(z)+1)">sin(x)ln(|z|+1)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.log(Math.abs(x)+1)">cos(z)ln(|x|+1)</button>
+<button class="function-btn" data-func="Math.atan(x*z)">arctan(x·z)</button>
+<button class="function-btn" data-func="Math.sin(x*z)">sin(x·z)</button>
+<button class="function-btn" data-func="Math.cos(x*z)">cos(x·z)</button>
+<button class="function-btn" data-func="Math.tan(x*z)">tan(x·z)</button>
+<button class="function-btn" data-func="Math.exp(x*z/10)">e^(x·z/10)</button>
+<button class="function-btn" data-func="Math.log(Math.abs(x*z)+1)">ln(|x·z|+1)</button>
+<button class="function-btn" data-func="Math.sqrt(Math.abs(x*z))">√|x·z|</button>
+<button class="function-btn" data-func="Math.pow(Math.abs(x),Math.abs(z))">|x|^|z|</button>
+<button class="function-btn" data-func="Math.sin(x)+z">sin(x)+z</button>
+<button class="function-btn" data-func="Math.cos(z)+x">cos(z)+x</button>
+<button class="function-btn" data-func="x+Math.sin(z)">x+sin(z)</button>
+<button class="function-btn" data-func="z+Math.cos(x)">z+cos(x)</button>
+<button class="function-btn" data-func="x*z/Math.sqrt(x*x+z*z+1)">x·z/√(x²+z²+1)</button>
+<button class="function-btn" data-func="(x*x-z*z)/Math.sqrt(x*x+z*z+1)">(x²-z²)/√(x²+z²+1)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.tanh(z)">sin(x)tanh(z)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.tanh(x)">cos(z)tanh(x)</button>
+<button class="function-btn" data-func="Math.sinh(x)*Math.cos(z)">sinh(x)cos(z)</button>
+<button class="function-btn" data-func="Math.cosh(z)*Math.sin(x)">cosh(z)sin(x)</button>
+<button class="function-btn" data-func="Math.sinh(x)*Math.sinh(z)">sinh(x)sinh(z)</button>
+<button class="function-btn" data-func="Math.cosh(x)*Math.cosh(z)">cosh(x)cosh(z)</button>
+<button class="function-btn" data-func="Math.tanh(x)*Math.tanh(z)">tanh(x)tanh(z)</button>
+<button class="function-btn" data-func="Math.asin(x/10)*Math.acos(z/10)">arcsin(x/10)arccos(z/10)</button>
+<button class="function-btn" data-func="Math.atan(x/5)*Math.atan(z/5)">arctan(x/5)arctan(z/5)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.atan(z)">sin(x)arctan(z)</button>
+<button class="function-btn" data-func="Math.cos(z)*Math.atan(x)">cos(z)arctan(x)</button>
+<button class="function-btn" data-func="Math.exp(-x*x/50-z*z/50)">e^(-x²/50-z²/50)</button>
+<button class="function-btn" data-func="Math.exp(-(x-5)*(x-5)/50-(z-5)*(z-5)/50)">e^(-(x-5)²/50-(z-5)²/50)</button>
+<button class="function-btn" data-func="Math.exp(-(x+5)*(x+5)/50-(z+5)*(z+5)/50)">e^(-(x+5)²/50-(z+5)²/50)</button>
+<button class="function-btn" data-func="Math.exp(-x*x/50)*Math.exp(-z*z/50)">e^(-x²/50)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(x)*Math.exp(-x*x/100)*Math.cos(z)*Math.exp(-z*z/100)">sin(x)e^(-x²/100)cos(z)e^(-z²/100)</button>
+<button class="function-btn" data-func="Math.sin(2*x)*Math.exp(-x*x/50)*Math.cos(2*z)*Math.exp(-z*z/50)">sin(2x)e^(-x²/50)cos(2z)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(3*x)*Math.exp(-x*x/50)*Math.cos(3*z)*Math.exp(-z*z/50)">sin(3x)e^(-x²/50)cos(3z)e^(-z²/50)</button>
+<button class="function-btn" data-func="Math.sin(4*x)*Math.exp(-x*x/50)*Math.cos(4*z)*Math.exp(-z*z/50)">sin(4x)e^(-x²/50)cos(4z)e^(-z²/50)</button>
+    <button class="function-btn" data-func="Math.sin(5*x)*Math.exp(-x*x/50)*Math.cos(5*z)*Math.exp(-z*z/50)">sin(5x)e^(-x²/50)cos(5z)e^(-z²/50)</button>
+            </div>
+            <div class="buttons">
+                <button id="plot-2d">绘制2D图像</button>
+                <button id="plot-3d">绘制3D图像</button>
+                <button id="clear-function">清除函数</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开发者模式模态窗口 -->
+    <div id="developer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>开发者模式 - 创建几何体</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="geometry-selector">
+                <button class="geometry-btn" data-type="sphere">球体</button>
+                <button class="geometry-btn" data-type="cylinder">圆柱体</button>
+                <button class="geometry-btn" data-type="cone">圆锥体</button>
+                <button class="geometry-btn" data-type="torus">圆环</button>
+                <button class="geometry-btn" data-type="pyramid">金字塔</button>
+                <button class="geometry-btn" data-type="plane">平面</button>
+            </div>
+            <div class="control-group">
+                <label for="geo-size">尺寸:</label>
+                <input type="range" id="geo-size" min="1" max="50" value="5" step="1">
+                <span id="geo-size-value">5</span>
+            </div>
+            <div class="control-group">
+                <label for="geo-color">颜色:</label>
+                <input type="color" id="geo-color" value="#3498db">
+            </div>
+            <button id="add-geometry">添加到场景</button>
+        </div>
+    </div>
+
+    <!-- 数学题目模态窗口 -->
+    <div id="math-problems-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>数学题目示例</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="math-problem-list">
+                <button class="math-problem-btn" data-length="5" data-width="4" data-height="3">题目1: 长5cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="10" data-width="6" data-height="8">题目2: 长10cm, 宽6cm, 高8cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="12" data-width="12" data-height="12">题目3: 棱长为12cm的正方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="15" data-width="10" data-height="5">题目4: 长15cm, 宽10cm, 高5cm的长方体可以分成多少个小立方体?</button>
+                <button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目5: 计算长20cm, 宽15cm, 高10cm的长方体体积</button>
+                <button class="math-problem-btn" data-length="3" data-width="2" data-height="2">题目1: 长3cm, 宽2cm, 高2cm的长方体体积是多少?</button>             
+                <button class="math-problem-btn" data-length="4" data-width="3" data-height="2">题目2: 长4cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="5" data-width="2" data-height="2">题目3: 长5cm, 宽2cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="4" data-width="4" data-height="3">题目4: 长4cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="6" data-width="3" data-height="2">题目5: 长6cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="5" data-width="3" data-height="3">题目6: 长5cm, 宽3cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="7" data-width="2" data-height="2">题目7: 长7cm, 宽2cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="4" data-width="3" data-height="4">题目8: 长4cm, 宽3cm, 高4cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="6" data-width="4" data-height="3">题目9: 长6cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="8" data-width="3" data-height="2">题目10: 长8cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="12" data-width="8" data-height="5">题目11: 长12cm, 宽8cm, 高5cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="15" data-width="10" data-height="6">题目12: 长15cm, 宽10cm, 高6cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="18" data-width="12" data-height="9">题目13: 长18cm, 宽12cm, 高9cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目14: 长20cm, 宽15cm, 高10cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="24" data-width="16" data-height="12">题目15: 长24cm, 宽16cm, 高12cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="25" data-width="20" data-height="15">题目16: 长25cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="30" data-width="20" data-height="15">题目17: 长30cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="35" data-width="25" data-height="20">题目18: 长35cm, 宽25cm, 高20cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="40" data-width="30" data-height="25">题目19: 长40cm, 宽30cm, 高25cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="45" data-width="35" data-height="30">题目20: 长45cm, 宽35cm, 高30cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="75" data-width="50" data-height="40">题目21: 长75cm, 宽50cm, 高40cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="85" data-width="60" data-height="45">题目22: 长85cm, 宽60cm, 高45cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="95" data-width="70" data-height="50">题目23: 长95cm, 宽70cm, 高50cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="105" data-width="80" data-height="55">题目24: 长105cm, 宽80cm, 高55cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="115" data-width="85" data-height="60">题目25: 长115cm, 宽85cm, 高60cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="125" data-width="90" data-height="65">题目26: 长125cm, 宽90cm, 高65cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="135" data-width="95" data-height="70">题目27: 长135cm, 宽95cm, 高70cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="145" data-width="100" data-height="75">题目28: 长145cm, 宽100cm, 高75cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="155" data-width="105" data-height="80">题目29: 长155cm, 宽105cm, 高80cm的长方体体积是多少?</button>
+                <button class="math-problem-btn" data-length="165" data-width="110" data-height="85">题目30: 长165cm, 宽110cm, 高85cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="5" data-width="4" data-height="3">题目1: 长5cm, 宽4cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="8" data-width="6" data-height="4">题目2: 长8cm, 宽6cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="10" data-width="5" data-height="2">题目3: 长10cm, 宽5cm, 高2cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="7" data-width="7" data-height="7">题目4: 棱长为7cm的正方体体积是多少?</button>
+<button class="math-problem-btn" data-length="12" data-width="8" data-height="5">题目5: 长12cm, 宽8cm, 高5cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="15" data-width="10" data-height="6">题目6: 长15cm, 宽10cm, 高6cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="9" data-width="9" data-height="4">题目7: 长9cm, 宽9cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="6" data-width="5" data-height="3">题目8: 长6cm, 宽5cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="20" data-width="15" data-height="10">题目9: 长20cm, 宽15cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="11" data-width="7" data-height="5">题目10: 长11cm, 宽7cm, 高5cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="14" data-width="10" data-height="8">题目11: 长14cm, 宽10cm, 高8cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="18" data-width="12" data-height="9">题目12: 长18cm, 宽12cm, 高9cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="25" data-width="20" data-height="15">题目13: 长25cm, 宽20cm, 高15cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="30" data-width="25" data-height="20">题目14: 长30cm, 宽25cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="22" data-width="18" data-height="12">题目15: 长22cm, 宽18cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="16" data-width="14" data-height="10">题目16: 长16cm, 宽14cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="13" data-width="11" data-height="7">题目17: 长13cm, 宽11cm, 高7cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="17" data-width="13" data-height="9">题目18: 长17cm, 宽13cm, 高9cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="19" data-width="15" data-height="11">题目19: 长19cm, 宽15cm, 高11cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="21" data-width="16" data-height="12">题目20: 长21cm, 宽16cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="24" data-width="18" data-height="14">题目21: 长24cm, 宽18cm, 高14cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="26" data-width="20" data-height="16">题目22: 长26cm, 宽20cm, 高16cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="28" data-width="22" data-height="18">题目23: 长28cm, 宽22cm, 高18cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="32" data-width="24" data-height="20">题目24: 长32cm, 宽24cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="35" data-width="28" data-height="22">题目25: 长35cm, 宽28cm, 高22cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="40" data-width="30" data-height="25">题目26: 长40cm, 宽30cm, 高25cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="45" data-width="35" data-height="30">题目27: 长45cm, 宽35cm, 高30cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="50" data-width="40" data-height="35">题目28: 长50cm, 宽40cm, 高35cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="55" data-width="45" data-height="40">题目29: 长55cm, 宽45cm, 高40cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="60" data-width="50" data-height="45">题目30: 长60cm, 宽50cm, 高45cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="4" data-width="3" data-height="2">题目31: 长4cm, 宽3cm, 高2cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="7" data-width="5" data-height="3">题目32: 长7cm, 宽5cm, 高3cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="9" data-width="6" data-height="4">题目33: 长9cm, 宽6cm, 高4cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="12" data-width="8" data-height="6">题目34: 长12cm, 宽8cm, 高6cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="15" data-width="10" data-height="8">题目35: 长15cm, 宽10cm, 高8cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="18" data-width="12" data-height="10">题目36: 长18cm, 宽12cm, 高10cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="20" data-width="15" data-height="12">题目37: 长20cm, 宽15cm, 高12cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="22" data-width="16" data-height="14">题目38: 长22cm, 宽16cm, 高14cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="25" data-width="18" data-height="15">题目39: 长25cm, 宽18cm, 高15cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="28" data-width="20" data-height="16">题目40: 长28cm, 宽20cm, 高16cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="30" data-width="22" data-height="18">题目41: 长30cm, 宽22cm, 高18cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="33" data-width="24" data-height="20">题目42: 长33cm, 宽24cm, 高20cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="36" data-width="26" data-height="22">题目43: 长36cm, 宽26cm, 高22cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="38" data-width="28" data-height="24">题目44: 长38cm, 宽28cm, 高24cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="40" data-width="30" data-height="26">题目45: 长40cm, 宽30cm, 高26cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="42" data-width="32" data-height="28">题目46: 长42cm, 宽32cm, 高28cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="44" data-width="34" data-height="30">题目47: 长44cm, 宽34cm, 高30cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="46" data-width="36" data-height="32">题目48: 长46cm, 宽36cm, 高32cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="48" data-width="38" data-height="34">题目49: 长48cm, 宽38cm, 高34cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="50" data-width="40" data-height="36">题目50: 长50cm, 宽40cm, 高36cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="52" data-width="42" data-height="38">题目51: 长52cm, 宽42cm, 高38cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="54" data-width="44" data-height="40">题目52: 长54cm, 宽44cm, 高40cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="56" data-width="46" data-height="42">题目53: 长56cm, 宽46cm, 高42cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="58" data-width="48" data-height="44">题目54: 长58cm, 宽48cm, 高44cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="60" data-width="50" data-height="46">题目55: 长60cm, 宽50cm, 高46cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="62" data-width="52" data-height="48">题目56: 长62cm, 宽52cm, 高48cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="64" data-width="54" data-height="50">题目57: 长64cm, 宽54cm, 高50cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="66" data-width="56" data-height="52">题目58: 长66cm, 宽56cm, 高52cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="68" data-width="58" data-height="54">题目59: 长68cm, 宽58cm, 高54cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="70" data-width="60" data-height="56">题目60: 长70cm, 宽60cm, 高56cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="72" data-width="62" data-height="58">题目61: 长72cm, 宽62cm, 高58cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="74" data-width="64" data-height="60">题目62: 长74cm, 宽64cm, 高60cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="76" data-width="66" data-height="62">题目63: 长76cm, 宽66cm, 高62cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="78" data-width="68" data-height="64">题目64: 长78cm, 宽68cm, 高64cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="80" data-width="70" data-height="66">题目65: 长80cm, 宽70cm, 高66cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="82" data-width="72" data-height="68">题目66: 长82cm, 宽72cm, 高68cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="84" data-width="74" data-height="70">题目67: 长84cm, 宽74cm, 高70cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="86" data-width="76" data-height="72">题目68: 长86cm, 宽76cm, 高72cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="88" data-width="78" data-height="74">题目69: 长88cm, 宽78cm, 高74cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="90" data-width="80" data-height="76">题目70: 长90cm, 宽80cm, 高76cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="92" data-width="82" data-height="78">题目71: 长92cm, 宽82cm, 高78cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="94" data-width="84" data-height="80">题目72: 长94cm, 宽84cm, 高80cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="96" data-width="86" data-height="82">题目73: 长96cm, 宽86cm, 高82cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="98" data-width="88" data-height="84">题目74: 长98cm, 宽88cm, 高84cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="100" data-width="90" data-height="86">题目75: 长100cm, 宽90cm, 高86cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="102" data-width="92" data-height="88">题目76: 长102cm, 宽92cm, 高88cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="104" data-width="94" data-height="90">题目77: 长104cm, 宽94cm, 高90cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="106" data-width="96" data-height="92">题目78: 长106cm, 宽96cm, 高92cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="108" data-width="98" data-height="94">题目79: 长108cm, 宽98cm, 高94cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="110" data-width="100" data-height="96">题目80: 长110cm, 宽100cm, 高96cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="112" data-width="102" data-height="98">题目81: 长112cm, 宽102cm, 高98cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="114" data-width="104" data-height="100">题目82: 长114cm, 宽104cm, 高100cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="116" data-width="106" data-height="102">题目83: 长116cm, 宽106cm, 高102cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="118" data-width="108" data-height="104">题目84: 长118cm, 宽108cm, 高104cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="120" data-width="110" data-height="106">题目85: 长120cm, 宽110cm, 高106cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="122" data-width="112" data-height="108">题目86: 长122cm, 宽112cm, 高108cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="124" data-width="114" data-height="110">题目87: 长124cm, 宽114cm, 高110cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="126" data-width="116" data-height="112">题目88: 长126cm, 宽116cm, 高112cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="128" data-width="118" data-height="114">题目89: 长128cm, 宽118cm, 高114cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="130" data-width="120" data-height="116">题目90: 长130cm, 宽120cm, 高116cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="132" data-width="122" data-height="118">题目91: 长132cm, 宽122cm, 高118cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="134" data-width="124" data-height="120">题目92: 长134cm, 宽124cm, 高120cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="136" data-width="126" data-height="122">题目93: 长136cm, 宽126cm, 高122cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="138" data-width="128" data-height="124">题目94: 长138cm, 宽128cm, 高124cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="140" data-width="130" data-height="126">题目95: 长140cm, 宽130cm, 高126cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="142" data-width="132" data-height="128">题目96: 长142cm, 宽132cm, 高128cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="144" data-width="134" data-height="130">题目97: 长144cm, 宽134cm, 高130cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="146" data-width="136" data-height="132">题目98: 长146cm, 宽136cm, 高132cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="148" data-width="138" data-height="134">题目99: 长148cm, 宽138cm, 高134cm的长方体体积是多少?</button>
+<button class="math-problem-btn" data-length="150" data-width="140" data-height="136">题目100: 长150cm, 宽140cm, 高136cm的长方体体积是多少?</button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 注释画布模态窗口 -->
+    <div id="annotation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加注释</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="toolbar">
+                <button class="tool-btn active" data-tool="pen">画笔</button>
+                <button class="tool-btn" data-tool="eraser">橡皮擦</button>
+                <button class="tool-btn" data-tool="text">文字</button>
+            </div>
+            <canvas id="annotation-canvas" class="annotation-canvas" width="400" height="300"></canvas>
+            <div class="buttons" style="margin-top: 15px;">
+                <button id="save-annotation">保存注释</button>
+                <button id="clear-annotation">清除画布</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/cubic.js"></script>
+    <script src="js/functions.js"></script>
+    <script src="js/developer.js"></script>
+    <script src="js/annotation.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
