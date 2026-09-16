@@ -159,11 +159,12 @@ function projectDims(faces) {
     if (!faces || faces.length === 0) return null;
     const byArea = faces.slice().sort((a, b) => b.w * b.h - a.w * a.h);
     const front = byArea[0];
-    const top = byArea.find(f => f !== front && f.y + f.h <= front.y + front.h * 0.35) || (byArea[1] || null);
-    const left = byArea.find(f => f !== front && f !== top) || null;
-    const W = front.w;
-    const H = front.h;
-    let D = top ? top.h : (left ? left.w : Math.min(W, H));
+    // 深度(D)取最小面（顶面或左面）的较短边：顶面高=深，左面宽=深
+    // 若只有一个面则退化为与…宽/高的比例
+    const side = byArea.length > 1 ? byArea[byArea.length - 1] : null;
+    const W = Math.max(front.w, 1);
+    const H = Math.max(front.h, 1);
+    let D = side ? Math.min(side.w, side.h) : Math.min(W, H);
     if (!D || D <= 0) D = Math.min(W, H);
     return { dims: [W, H, D], faces: byArea };
 }
