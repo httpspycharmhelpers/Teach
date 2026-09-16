@@ -562,6 +562,164 @@
             border-color: #f1c40f;
         }
 
+        /* ---- 识别题目 ---- */
+        #scan-preview {
+            max-width: 100%;
+            max-height: 320px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        #scan-image-input {
+            display: block;
+            margin: 8px 0;
+        }
+        #scan-result {
+            background: #ecf9f1;
+            border: 1px solid #2ecc71;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #1a3c27;
+            white-space: normal;
+        }
+        .scan-hint {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        #marker-notes-toggle {
+            background: #16a085;
+        }
+
+        /* ---- 定义模型（开发者模式） ---- */
+        .geo-divider {
+            border: 0;
+            border-top: 1px solid #ddd;
+            margin: 16px 0;
+        }
+        .define-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .define-row input[type="file"] {
+            flex: 1;
+            min-width: 160px;
+            font-size: 0.85rem;
+        }
+        #define-model-btn {
+            background: #8e44ad;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        #define-model-btn:hover {
+            opacity: 0.85;
+        }
+        #define-preview {
+            max-width: 100%;
+            max-height: 320px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 8px 0;
+            display: block;
+        }
+
+        /* ---- 模型编辑面板 ---- */
+        #model-editor {
+            position: fixed;
+            left: 50%;
+            bottom: 74px;
+            transform: translateX(-50%);
+            width: 520px;
+            max-width: 94vw;
+            background: #fff;
+            border: 1px solid #8e44ad;
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+            z-index: 60;
+            font-size: 0.85rem;
+        }
+        #model-editor .me-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: bold;
+            color: #8e44ad;
+            margin-bottom: 8px;
+        }
+        #model-editor #me-close {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #999;
+        }
+        #model-editor .me-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        #model-editor label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        #model-editor input[type="number"] {
+            width: 64px;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+        #model-editor #me-color {
+            width: 46px;
+            height: 30px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 2px;
+        }
+        #model-editor button {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+        #me-note {
+            background: #2ecc71;
+            color: #fff;
+        }
+        #me-delete {
+            background: #e74c3c;
+            color: #fff;
+        }
+        #me-tip {
+            color: #999;
+            font-size: 0.78rem;
+            margin-left: auto;
+        }
+        @media (max-width: 640px) {
+            #model-editor {
+                bottom: 130px;
+                width: 96vw;
+            }
+            #model-editor input[type="number"] {
+                width: 54px;
+            }
+        }
+
         /* ---- 备注编辑器 ---- */
         .note-editor label {
             display: block;

@@ -299,6 +299,7 @@ function setupEventListeners() {
     document.getElementById('marker-clear').addEventListener('click', clearMarkedCubes);
     document.getElementById('marker-apply').addEventListener('click', applyMarkerSize);
     document.getElementById('marker-rotate-btn').addEventListener('click', rotateSelectedByAngle);
+    document.getElementById('marker-notes-toggle').addEventListener('click', toggleNotes);
 
     // 备注模态窗口
     document.getElementById('note-save').addEventListener('click', saveNote);
@@ -310,6 +311,7 @@ function setupEventListeners() {
         handleNoteImage(this);
     });
 
+    // 识别题目 → 定义模型（开发者模式内「添加/定义模型」，UI 绑定在 recognize.js）
     initAnnotationCanvas();
 }
 

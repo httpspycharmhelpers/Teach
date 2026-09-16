@@ -96,7 +96,12 @@ function updateCube() {
 
     // 标记模式下显示小方块
     if (markerMode) {
-        createSmallCubes(lengthValue, heightValue, widthValue);
+        if (smallCubes.length > 0) {
+            restoreMarkerCubes();
+        } else {
+            createSmallCubes(lengthValue, heightValue, widthValue);
+            updateNoteVisuals();
+        }
         return;
     }
 
@@ -162,11 +167,10 @@ function createSmallCubes(length, height, width) {
                 cubeGroup.add(smallCube);
                 smallCubes.push(smallCube);
 
-                // 添加边框
+                // 边框作为方块的子节点，移动/旋转时自动跟随
                 const edges = new THREE.EdgesGeometry(geometry);
                 const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-                line.position.copy(smallCube.position);
-                cubeGroup.add(line);
+                smallCube.add(line);
             }
         }
     }
@@ -198,19 +202,34 @@ function setMarkerMode(active) {
     }
 }
 
-// 确认所有更改：所有小方块恢复蓝色初始模样，取消选中
+// 保存所有更改并退出标记模式（不恢复初始状态，改动保留；再次进入标记模式时可继续编辑）
 function confirmSelection() {
-    selectedCubes.forEach(c => {
-        setCubeColor(c, DESELECT_COLOR);
-        // 恢复原始位置
-        if (c.userData && c.userData.originalPosition) {
-            c.position.copy(c.userData.originalPosition);
-        }
-        c.rotation.set(0, 0, 0);
-        c.scale.set(1, 1, 1);
-    });
+    // 清空选中态，但保留所有编辑结果
+    selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
     selectedCubes = [];
     syncSelection();
+    exitMarkerMode();
+}
+
+function exitMarkerMode() {
+    if (!markerMode) return;
+    setMarkerMode(false);
+    updateCube(); // 重新显示普通长方体；smallCubes 保存在内存中，重进标记模式时恢复
+    const btn = document.getElementById('marker-mode');
+    if (btn) {
+        btn.style.background = '#f39c12';
+        btn.textContent = '标记模式';
+    }
+}
+
+// 重新进入标记模式时恢复之前保存的小方块（含删除/移动/缩放/旋转/备注等所有编辑）
+function restoreMarkerCubes() {
+    smallCubes.forEach(cube => {
+        cubeGroup.add(cube);
+    });
+    syncSelection();
+    updateNoteVisuals();
+    updateVolumeFromMarked();
 }
 
 // 转换事件坐标到 NDC，支持触摸
@@ -282,8 +301,14 @@ function toggleCubeSelection(cube, event) {
     syncSelection();
 }
 
+let dragStartClient = null;
+let dragStartState = [];   // 每个选中块拖拽开始时的 position/rotation/scale
+
 function onPointerDown(event) {
-    if (!markerMode) return;
+    if (!markerMode) {
+        handleModelPointerDown(event);
+        return;
+    }
     const ndc = eventToNDC(event);
     const cube = pickSmallCube(ndc.clientX, ndc.clientY);
 
@@ -293,7 +318,7 @@ function onPointerDown(event) {
         if (controls) controls.enabled = false;
         const idx = selectedCubes.indexOf(cube);
         if (currentTool === 'select') {
-            // 选择工具：点击切换选中/取消
+            // 选择工具：点击切换选中/取消（不做拖拽）
             if (idx >= 0) {
                 selectedCubes.splice(idx, 1);
                 setCubeColor(cube, DESELECT_COLOR);
@@ -302,9 +327,7 @@ function onPointerDown(event) {
                 setCubeColor(cube, SELECT_COLOR);
             }
         } else {
-            // 移动/缩放/旋转工具：点击选中并开始拖拽
-            isDragging = true;
-            selectedCube = cube;
+            // 移动/缩放/旋转工具：点击选中并记录拖拽起始状态
             if (idx < 0) {
                 if (!event.ctrlKey && !event.metaKey) {
                     selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
@@ -313,7 +336,14 @@ function onPointerDown(event) {
                 selectedCubes.push(cube);
                 setCubeColor(cube, SELECT_COLOR);
             }
-            previousMousePosition = { x: ndc.clientX, y: ndc.clientY };
+            isDragging = true;
+            selectedCube = cube;
+            dragStartClient = { x: ndc.clientX, y: ndc.clientY };
+            dragStartState = selectedCubes.map(c => ({
+                pos: c.position.clone(),
+                rot: c.rotation.clone(),
+                scale: c.scale.clone()
+            }));
         }
         syncSelection();
         return;
@@ -327,41 +357,77 @@ function onPointerDown(event) {
     }
 }
 
+// 在当前相机距离下，把屏幕像素距离换算成世界坐标距离（拖拽跟手不抖）
+function computeWorldPerPixel(point) {
+    const dist = camera.position.distanceTo(point || selectedCube.position);
+    const h = renderer.domElement.clientHeight || 600;
+    const w = renderer.domElement.clientWidth || 800;
+    const vFov = camera.fov * Math.PI / 180;
+    const worldPerPixY = 2 * dist * Math.tan(vFov / 2) / h;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (w / h));
+    const worldPerPixX = 2 * dist * Math.tan(hFov / 2) / w;
+    return { x: worldPerPixX, y: worldPerPixY };
+}
+
 function onPointerMove(event) {
-    if (!isDragging || !selectedCube) return;
+    if (modelDragActive) {
+        handleModelPointerMove(event);
+        return;
+    }
+    if (!isDragging || !selectedCube || !dragStartClient) return;
     const ndc = eventToNDC(event);
+    const dx = ndc.clientX - dragStartClient.x;
+    const dy = ndc.clientY - dragStartClient.y;
 
-    const deltaMove = {
-        x: ndc.clientX - previousMousePosition.x,
-        y: ndc.clientY - previousMousePosition.y
-    };
+    // 死区：小于 6px 视为点击，不做拖拽，防止误触瞬移
+    if (Math.hypot(dx, dy) < 6) return;
 
-    const worldDirection = new THREE.Vector3();
-    camera.getWorldDirection(worldDirection);
-    const gridStep = parseFloat(document.getElementById('length-unit').value);
+    const wpp = computeWorldPerPixel();
+    const unitSize = parseFloat(document.getElementById('length-unit').value);
 
     if (currentTool === 'rotate') {
-        selectedCubes.forEach(c => {
-            // 水平拖动绕 Y 轴旋转，垂直拖动绕 X 轴旋转
-            c.rotation.y += deltaMove.x * 0.02;
-            c.rotation.x += deltaMove.y * 0.02;
+        // 旋转：水平拖动绕 Y 轴，垂直拖动绕 X 轴，采用起始角度+偏移
+        selectedCubes.forEach((c, i) => {
+            const start = dragStartState[i];
+            c.rotation.y = start.rot.y + dx * 0.008;
+            c.rotation.x = start.rot.x - dy * 0.008;
+        });
+    } else if (currentTool === 'resize') {
+        // 缩放：水平拖动等比缩放（从起始比例开始，保持不小于 0.2）
+        const k = 1 + dx * wpp.x * 0.02;
+        selectedCubes.forEach((c, i) => {
+            const start = dragStartState[i];
+            const kk = Math.max(0.2, k * start.scale.x);
+            c.scale.set(kk, kk, kk);
         });
     } else {
-        // 移动（吸附到单元网格）
-        const moveX = deltaMove.x * gridStep / 2;
-        const moveY = -deltaMove.y * gridStep / 2;
-        selectedCubes.forEach(c => {
-            c.position.x = Math.round((c.position.x + moveX) / gridStep) * gridStep;
-            c.position.y = Math.round((c.position.y + moveY) / gridStep) * gridStep;
+        // 移动：绝对偏移 + 可选网格吸附（不累积误差，拖动稳定）
+        const moveX = dx * wpp.x;
+        const moveY = -dy * wpp.y;
+        selectedCubes.forEach((c, i) => {
+            const start = dragStartState[i];
+            let px = start.pos.x + moveX;
+            let py = start.pos.y + moveY;
+            px = Math.round(px / unitSize) * unitSize;
+            py = Math.max(unitSize / 2, Math.round(py / unitSize) * unitSize);
+            c.position.x = px;
+            c.position.y = py;
+            c.position.z = start.pos.z;
+            updateNotePosition(c);
         });
     }
-
-    previousMousePosition = { x: ndc.clientX, y: ndc.clientY };
 }
 
 function onPointerUp() {
+    if (modelDragActive) {
+        handleModelPointerUp();
+    }
+    modelDragActive = null;
     isDragging = false;
+    selectedCube = null;
     previousMousePosition = { x: 0, y: 0 };
+    dragStartClient = null;
+    dragStartState = [];
     // 恢复 OrbitControls 以便旋转视角
     if (controls) controls.enabled = true;
 }
@@ -402,6 +468,7 @@ function deleteSelectedCube() {
         return;
     }
     selectedCubes.forEach(cube => {
+        removeNoteVisual(cube);
         const i = smallCubes.indexOf(cube);
         if (i >= 0) smallCubes.splice(i, 1);
         cubeGroup.remove(cube);
@@ -457,6 +524,8 @@ function saveNote() {
         currentNoteCube.material.emissive = new THREE.Color(0x000000);
     }
     document.getElementById('note-modal').style.display = 'none';
+    updateNoteVisuals();
+    syncModelNoteAfterSave(currentNoteCube);
     currentNoteCube = null;
 }
 
@@ -472,10 +541,186 @@ function handleNoteImage(input) {
     reader.readAsDataURL(file);
 }
 
+/* ---- 备注浮层：从方块拉一条引出线，末端悬浮文字/图片卡片 ---- */
+
+let notesVisible = false;
+
+function toggleNotes() {
+    notesVisible = !notesVisible;
+    smallCubes.forEach(cube => {
+        if (cube.userData.noteSprite) cube.userData.noteSprite.visible = notesVisible;
+        if (cube.userData.noteLine) cube.userData.noteLine.visible = notesVisible;
+    });
+    const btn = document.getElementById('marker-notes-toggle');
+    if (btn) btn.textContent = notesVisible ? '隐藏备注' : '显示备注';
+}
+
+function removeNoteVisual(cube) {
+    if (cube.userData.noteLine) {
+        cubeGroup.remove(cube.userData.noteLine);
+        if (cube.userData.noteLine.geometry) cube.userData.noteLine.geometry.dispose();
+        cube.userData.noteLine = null;
+    }
+    if (cube.userData.noteSprite) {
+        cubeGroup.remove(cube.userData.noteSprite);
+        if (cube.userData.noteSprite.material && cube.userData.noteSprite.material.map) {
+            cube.userData.noteSprite.material.map.dispose();
+        }
+        if (cube.userData.noteSprite.material) cube.userData.noteSprite.material.dispose();
+        cube.userData.noteSprite = null;
+    }
+}
+
+// 卡片画布：可容纳图片 + 文字
+function buildNoteCanvas(note, done) {
+    const text = (note.text || '').toString();
+    const image = note.image || '';
+    const hasImage = !!image;
+    const W = hasImage ? 200 : 240;
+    const TH = hasImage ? 56 : 112;   // 文字区高度
+    const IH = hasImage ? 110 : 0;    // 图片区高度
+    const H = (hasImage ? IH : 0) + (text ? TH : 0);
+    if (H <= 0) return done(null);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#2980b9';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+
+    const drawText = function(y) {
+        if (!text) return;
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = '22px sans-serif';
+        ctx.textBaseline = 'top';
+        let line = '';
+        let yy = y + 8;
+        for (let i = 0; i < text.length; i++) {
+            const t = line + text[i];
+            if (ctx.measureText(t).width > W - 16 && line) {
+                ctx.fillText(line, 8, yy);
+                line = text[i];
+                yy += 26;
+            } else {
+                line = t;
+            }
+            if (yy > y + TH - 4) break;
+        }
+        if (line) ctx.fillText(line, 8, yy);
+    };
+
+    const finish = function() {
+        if (text) drawText(hasImage ? IH : 0);
+        done(canvas);
+    };
+
+    if (hasImage) {
+        const img = new Image();
+        img.onload = function() {
+            // 图片在卡片上部等比缩放居中
+            const iw = W - 16, ih = IH - 16;
+            const s = Math.min(iw / img.width, ih / img.height);
+            const dw = img.width * s, dh = img.height * s;
+            ctx.drawImage(img, (W - dw) / 2, 8 + (ih - dh) / 2, dw, dh);
+            finish();
+        };
+        img.onerror = function() { finish(); };
+        img.src = image;
+        if (img.complete && img.naturalWidth > 0) {
+            const iw = W - 16, ih = IH - 16;
+            const s = Math.min(iw / img.width, ih / img.height);
+            const dw = img.width * s, dh = img.height * s;
+            ctx.drawImage(img, (W - dw) / 2, 8 + (ih - dh) / 2, dw, dh);
+            finish();
+        }
+    } else {
+        finish();
+    }
+}
+
+function ensureNoteVisual(cube, note) {
+    buildNoteCanvas(note || {}, function(canvas) {
+        if (!canvas) return;
+        if (cube.userData.noteSprite) {
+            cubeGroup.remove(cube.userData.noteSprite);
+            if (cube.userData.noteSprite.material && cube.userData.noteSprite.material.map) {
+                cube.userData.noteSprite.material.map.dispose();
+            }
+            cube.userData.noteSprite = null;
+        }
+        if (cube.userData.noteLine) {
+            cubeGroup.remove(cube.userData.noteLine);
+            cube.userData.noteLine = null;
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: texture,
+            depthTest: false
+        }));
+        const scale = 0.05;
+        sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+        sprite.visible = notesVisible;
+
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, 0)
+        ]);
+        const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+            color: 0x2980b9,
+            linewidth: 1
+        }));
+        line.visible = notesVisible;
+
+        cube.userData.noteSprite = sprite;
+        cube.userData.noteLine = line;
+        cubeGroup.add(sprite);
+        cubeGroup.add(line);
+        updateNotePosition(cube);
+    });
+}
+
+function updateNotePosition(cube) {
+    const sprite = cube.userData.noteSprite;
+    const line = cube.userData.noteLine;
+    if (!sprite || !line) return;
+    const box = new THREE.Box3().setFromObject(cube);
+    const unit = parseFloat(document.getElementById('length-unit').value);
+    const topY = box.max.y;
+    const gap = Math.max(unit * 1.2, 1.2);
+    sprite.position.set(cube.position.x, topY + gap, cube.position.z);
+    const linePts = [
+        new THREE.Vector3(cube.position.x, topY, cube.position.z),
+        new THREE.Vector3(cube.position.x, topY + gap * 0.6, cube.position.z)
+    ];
+    line.geometry.setFromPoints(linePts);
+}
+
+// 重建所有带备注方块的浮层
+function updateNoteVisuals() {
+    smallCubes.forEach(cube => {
+        const note = cube.userData.note || {};
+        const hasNote = !!(note.text || note.image);
+        if (hasNote) {
+            ensureNoteVisual(cube, note);
+        } else {
+            removeNoteVisual(cube);
+        }
+    });
+}
+
 function clearMarkedCubes() {
     if (smallCubes.length === 0) return;
     if (!confirm('确定清空全部小方块？')) return;
-    smallCubes.forEach(cube => cubeGroup.remove(cube));
+    smallCubes.forEach(cube => {
+        removeNoteVisual(cube);
+        cubeGroup.remove(cube);
+    });
     smallCubes = [];
     selectedCubes = [];
     syncSelection();
@@ -497,6 +742,7 @@ function rotateSelectedByAngle() {
     selectedCubes.forEach(c => {
         c.rotation.y += rad;
     });
+    smallCubes.forEach(c => updateNotePosition(c));
 }
 
 // 输入尺寸：缩放选中小方块（支持小数）
@@ -517,6 +763,7 @@ function applyMarkerSize() {
         cube.scale.set(k, k, k);
         cube.userData.scale = k;
     });
+    smallCubes.forEach(c => updateNotePosition(c));
     updateVolumeFromMarked();
 }
 

@@ -108,7 +108,8 @@
                     <button id="marker-delete" class="marker-action-btn" title="删除选中">删除</button>
                     <button id="marker-note" class="marker-action-btn" title="添加备注">备注</button>
                     <button id="marker-clear" class="marker-action-btn" title="清空全部">清空</button>
-                    <button id="marker-select-confirm" class="marker-action-btn" title="确定所有更改，全部恢复初始模样">确定</button>
+                    <button id="marker-select-confirm" class="marker-action-btn" title="保存所有更改并退出标记模式">确定</button>
+                    <button id="marker-notes-toggle" class="marker-action-btn" title="显示/隐藏备注浮层">显示备注</button>
                 </div>
             </div>
             <div class="axis-label length-label">长</div>
@@ -212,7 +213,7 @@
             </div>
             <details class="geo-advanced">
                 <summary>位置 / 旋转（可选，默认自动落地）</summary>
-                <div class="geo-num-row">
+<div class="geo-num-row">
                     <div class="control-group">
                         <label>X <input type="number" id="geo-pos-x" value="0" step="1"></label>
                     </div>
@@ -238,6 +239,16 @@
             <div class="buttons">
                 <button id="add-geometry">添加到场景</button>
                 <button id="clear-geometry">清空几何体</button>
+            </div>
+            <hr class="geo-divider">
+            <div id="define-model-section">
+                <p class="scan-hint"><b>添加/定义模型</b>：上传三视图图片（正面/上面/左面），自动分析并生成立体，可选中后移动坐标、改大小、上色、添加备注。</p>
+                <div class="define-row">
+                    <input type="file" id="define-model-input" accept="image/*">
+                    <button id="define-model-btn">分析并定义</button>
+                </div>
+                <img id="define-preview" class="note-preview" style="display:none;">
+                <div id="define-result" class="scan-result"></div>
             </div>
         </div>
     </div>
@@ -281,6 +292,29 @@
     </div>
 
     <!-- 备注模态窗口 -->
+    <!-- 模型编辑面板：选中自定义几何体后可移动/改大小/上色/备注 -->
+    <div id="model-editor" style="display:none;">
+        <div class="me-title"><span id="me-name">模型</span><button id="me-close">&times;</button></div>
+        <div class="me-row">
+            <label>X <input type="number" id="me-pos-x" step="0.5"></label>
+            <label>Y <input type="number" id="me-pos-y" step="0.5"></label>
+            <label>Z <input type="number" id="me-pos-z" step="0.5"></label>
+        </div>
+        <div class="me-row">
+            <label>宽 <input type="number" id="me-size-w" step="0.5" min="0.1"></label>
+            <label>高 <input type="number" id="me-size-h" step="0.5" min="0.1"></label>
+            <label>深 <input type="number" id="me-size-d" step="0.5" min="0.1"></label>
+        </div>
+        <div class="me-row">
+            <label>颜色 <input type="color" id="me-color" value="#3498db"></label>
+        </div>
+        <div class="me-row">
+            <button id="me-note">备注</button>
+            <button id="me-delete">删除</button>
+            <span id="me-tip">拖动模型可移动</span>
+        </div>
+    </div>
+
     <div id="note-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -306,6 +340,7 @@
     <script src="js/developer.js"></script>
     <script src="js/math.js"></script>
     <script src="js/annotation.js"></script>
+    <script src="js/recognize.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

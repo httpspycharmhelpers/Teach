@@ -65,4 +65,25 @@ function clearGeometries() {
         if (mesh.geometry) mesh.geometry.dispose();
         if (mesh.material) mesh.material.dispose();
     }
+    if (typeof clearDefinedModels === 'function') clearDefinedModels();
+}
+
+// 清空定义模型（由 recognize.js 实现逻辑）
+function clearDefinedModels() {
+    if (typeof definedModels !== 'undefined') {
+        const models = definedModels.slice();
+        models.forEach(m => {
+            if (typeof removeModel === 'function') {
+                removeModel(m);
+            } else {
+                scene.remove(m.mesh);
+                if (m.mesh.geometry) m.mesh.geometry.dispose();
+                if (m.mesh.material) m.mesh.material.dispose();
+                const ci = customGeometries.indexOf(m.mesh);
+                if (ci >= 0) customGeometries.splice(ci, 1);
+            }
+        });
+        definedModels = [];
+    }
+    deselectModel();
 }
