@@ -232,21 +232,34 @@ function restoreMarkerCubes() {
     updateVolumeFromMarked();
 }
 
-// 转换事件坐标到 NDC，支持触摸
-function eventToNDC(event) {
+// 取事件相对画布的坐标（画布可能不在页面左上角，需减去元素偏移）
+function eventToCanvas(event) {
     const src = event.touches && event.touches.length > 0 ? event.touches[0] : (event.changedTouches && event.changedTouches.length > 0 ? event.changedTouches[0] : event);
+    const rect = renderer.domElement.getBoundingClientRect();
     return {
-        x: (src.clientX / renderer.domElement.clientWidth) * 2 - 1,
-        y: -(src.clientY / renderer.domElement.clientHeight) * 2 + 1,
+        x: src.clientX - rect.left,
+        y: src.clientY - rect.top,
         clientX: src.clientX,
         clientY: src.clientY
     };
 }
 
+// 转换事件坐标到 NDC，支持触摸
+function eventToNDC(event) {
+    const c = eventToCanvas(event);
+    return {
+        x: (c.x / renderer.domElement.clientWidth) * 2 - 1,
+        y: -(c.y / renderer.domElement.clientHeight) * 2 + 1,
+        clientX: c.clientX,
+        clientY: c.clientY
+    };
+}
+
 function pickSmallCube(clientX, clientY) {
+    const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2();
-    mouse.x = (clientX / renderer.domElement.clientWidth) * 2 - 1;
-    mouse.y = -(clientY / renderer.domElement.clientHeight) * 2 + 1;
+    mouse.x = ((clientX - rect.left) / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / renderer.domElement.clientHeight) * 2 + 1;
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
@@ -379,8 +392,8 @@ function onPointerMove(event) {
     const dx = ndc.clientX - dragStartClient.x;
     const dy = ndc.clientY - dragStartClient.y;
 
-    // 死区：小于 6px 视为点击，不做拖拽，防止误触瞬移
-    if (Math.hypot(dx, dy) < 6) return;
+    // 死区：小于 4px 视为点击，不做拖拽，防止误触瞬移
+    if (Math.hypot(dx, dy) < 4) return;
 
     const wpp = computeWorldPerPixel();
     const unitSize = parseFloat(document.getElementById('length-unit').value);
@@ -613,34 +626,37 @@ function buildNoteCanvas(note, done) {
         if (line) ctx.fillText(line, 8, yy);
     };
 
+    let finished = false;
     const finish = function() {
+        if (finished) return;
+        finished = true;
         if (text) drawText(hasImage ? IH : 0);
         done(canvas);
     };
 
     if (hasImage) {
         const img = new Image();
-        img.onload = function() {
-            // 图片在卡片上部等比缩放居中
+        const drawImage = function() {
+            if (img.naturalWidth <= 0) return;
             const iw = W - 16, ih = IH - 16;
-            const s = Math.min(iw / img.width, ih / img.height);
-            const dw = img.width * s, dh = img.height * s;
+            const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
+            const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
             ctx.drawImage(img, (W - dw) / 2, 8 + (ih - dh) / 2, dw, dh);
-            finish();
         };
+        img.onload = function() { drawImage(); finish(); };
         img.onerror = function() { finish(); };
         img.src = image;
         if (img.complete && img.naturalWidth > 0) {
-            const iw = W - 16, ih = IH - 16;
-            const s = Math.min(iw / img.width, ih / img.height);
-            const dw = img.width * s, dh = img.height * s;
-            ctx.drawImage(img, (W - dw) / 2, 8 + (ih - dh) / 2, dw, dh);
+            drawImage();
             finish();
         }
     } else {
         finish();
     }
 }
+
+// 备注浮层统一世界尺寸（卡宽固定约 6 个世界单位，避免卡片过大/过小）
+const NOTE_WORLD_WIDTH = 6;
 
 function ensureNoteVisual(cube, note) {
     buildNoteCanvas(note || {}, function(canvas) {
@@ -663,8 +679,8 @@ function ensureNoteVisual(cube, note) {
             map: texture,
             depthTest: false
         }));
-        const scale = 0.05;
-        sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+        const s = NOTE_WORLD_WIDTH / canvas.width;
+        sprite.scale.set(canvas.width * s, canvas.height * s, 1);
         sprite.visible = notesVisible;
 
         const lineGeo = new THREE.BufferGeometry().setFromPoints([

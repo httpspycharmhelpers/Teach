@@ -1,20 +1,87 @@
 // 函数可视化模块：2D/3D 函数图像绘制（2D 固定面板 + 人性网格 + 可拖拽）
 
+// =================== 人性化表达式 → 标准 JS ===================
+// 支持：2^n / 2ⁿ / sin(x) / π / √ 、隐式乘法 2x、(x+1)(x-1) 等
+const SUP_DIGITS = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', 'ⁿ': 'n' };
+
+function normalizeExpr(raw) {
+    let e = String(raw == null ? '' : raw).trim();
+    if (!e) return e;
+
+    // 符号别名
+    e = e.replace(/÷/g, '/').replace(/×/g, '*').replace(/[−－]/g, '-');
+    // 科学计数法：1e-3 → 1*10**(-3)（避免误当常量 e）
+    e = e.replace(/([0-9](?:\.[0-9]+)?)[eE]([+-]?\d+(?:\.\d+)?)/g, '$1*10**($2)');
+    // 上标幂：2ⁿ、x²、2²ⁿ → 2**n、x**2、2**2**n
+    e = e.replace(/([0-9a-zA-Z_)\]])[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ]+/gu, (m, base) => {
+        let d = '';
+        for (const ch of m.slice(base.length)) d += SUP_DIGITS[ch];
+        return base + '**' + d;
+    });
+    // 脱字符：2^n → 2**n
+    e = e.replace(/\^/g, '**');
+    // π（先于 pi 别名，避免 Math.PI 被二次替换）；单独 π 或 π 与字母/数字相邻都算乘积
+    e = e.replace(/π([a-zA-Z0-9_])/g, 'Math.PI*$1').replace(/π/g, 'Math.PI');
+    // 无穷
+    e = e.replace(/∞/g, 'Infinity');
+    // 平方根：√x、√(..)
+    e = e.replace(/√\(/g, 'Math.sqrt(').replace(/√([0-9a-zA-Z_.]+)/g, 'Math.sqrt($1)');
+    // 隐式乘法：2x、2(x+1)、(x+1)(x-1)、2sin(x)…
+    e = e.replace(/([\d\]\)])([a-zA-Z_(])/g, '$1*$2').replace(/\)([a-zA-Z_])/g, ')*$1');
+    // 常量：pi、e（单独出现，避开变量名、Math.* 与科学计数法）
+    e = e.replace(/(^|[^A-Za-z0-9_.])pi(?![A-Za-z0-9_.])/gi, '$1Math.PI');
+    e = e.replace(/(^|[^A-Za-z0-9_.])e(?![A-Za-z0-9_.])/g, '$1Math.E');
+    // ln 与常用函数自动补 Math. 前缀
+    e = e.replace(/(^|[^A-Za-z0-9_.])ln\s*\(/g, '$1Math.log(');
+    e = e.replace(/(^|[^A-Za-z0-9_.])(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|sqrt|abs|exp|floor|ceil|round|pow|min|max|sign)\s*\(/g, '$1Math.$2(');
+    // ** 统一转成 Math.pow，避免 -x^2 触发"一元负号在幂前"的语法错误
+    e = convertPowToFunc(e);
+    return e;
+}
+
+// 把 a**b 转成 Math.pow(a, b)：从右往左处理（右结合），支持 2^-3、(x+1)^2、x**2**3
+function convertPowToFunc(e) {
+    let changed = true;
+    while (changed) {
+        changed = false;
+        const idx = e.lastIndexOf('**');
+        if (idx < 0) break;
+        const expRe = /^(Math\.\w+\([^()]*\)|\([^()]*\)|-?[A-Za-z0-9_.]+)/;
+        const em = e.slice(idx + 2).match(expRe);
+        if (!em) break;
+        const baseRe = /(Math\.\w+\([^()]*\)|\([^()]*\)|[A-Za-z0-9_.]+)$/;
+        const bm = e.slice(0, idx).match(baseRe);
+        if (!bm) break;
+        const be = idx - bm[0].length;
+        e = e.slice(0, be) + 'Math.pow(' + bm[0] + ', ' + em[0] + ')' + e.slice(idx + 2 + em[0].length);
+        changed = true;
+    }
+    return e;
+}
+
+// 把标准化后的表达式转成易读的 y = 标题
+function displayExpr(e) {
+    let s = String(e || '');
+    s = s.replace(/Math\.pow\(\(([^()]*)\),\s*\(?([^)]*)\)?\)/g, '($1)^($2)');
+    s = s.replace(/Math\.pow\(([^,]+),\s*\(?([^)]*)\)?\)/g, '$1^($2)');
+    return s.replace(/\*\*/g, '^').replace(/\*/g, '·');
+}
+
 // =================== 3D 曲面 ===================
 function plotFunction3D() {
     if (functionMesh) {
         scene.remove(functionMesh);
     }
 
-    const expression = document.getElementById('function-expression').value;
+    const expression = normalizeExpr(document.getElementById('function-expression').value);
 
     const geometry = new THREE.ParametricGeometry((u, v, target) => {
         const x = (u - 0.5) * 20;
         const z = (v - 0.5) * 20;
 
         try {
-            const func = new Function('x', 'z', 'return ' + expression + ';');
-            const y = func(x, z);
+            const func = new Function('x', 'z', 'n', 'return ' + expression + ';');
+            const y = func(x, z, x);
             target.set(x, isFinite(y) ? y : 0, z);
         } catch (error) {
             console.error('3D 函数计算错误:', error);
@@ -43,12 +110,12 @@ function plotFunction2D() {
     var ctx = canvas.getContext('2d');
     var W = canvas.width;
     var H = canvas.height;
-    var expression = document.getElementById('function-expression').value;
+    var expression = normalizeExpr(document.getElementById('function-expression').value);
 
     // 2D 只看 x 方向，z 固定为 0
     var func;
     try {
-        func = new Function('x', 'z', 'return ' + expression + ';');
+        func = new Function('x', 'z', 'n', 'return ' + expression + ';');
     } catch (e) {
         alert('函数表达式语法错误：' + e.message);
         return;
@@ -62,7 +129,7 @@ function plotFunction2D() {
     var yVals = [];
     for (var x = xMin; x <= xMax; x += 0.2) {
         var y;
-        try { y = func(x, 0); } catch (err) { continue; }
+        try { y = func(x, 0, x); } catch (err) { continue; }
         if (isFinite(y) && Math.abs(y) < 1e6) yVals.push(y);
     }
     var yMinV = Math.min.apply(null, yVals);
@@ -130,7 +197,7 @@ function plotFunction2D() {
     var started = false;
     for (var x = xMin; x <= xMax; x += 0.05) {
         var y;
-        try { y = func(x, 0); } catch (err) { continue; }
+        try { y = func(x, 0, x); } catch (err) { continue; }
         if (!isFinite(y) || Math.abs(y) > 1e6) { started = false; continue; }
         var px = toPixelX(x), py = toPixelY(y);
         if (!started) { ctx.moveTo(px, py); started = true; }
@@ -142,7 +209,7 @@ function plotFunction2D() {
     ctx.fillStyle = '#8e44ad';
     ctx.font = 'italic 13px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('y = ' + expression.replace(/\*/g, '·'), pad + 4, pad - 4);
+    ctx.fillText('y = ' + displayExpr(expression), pad + 4, pad - 4);
 
     // 显示面板
     panel.style.display = 'block';

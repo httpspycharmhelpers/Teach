@@ -81,6 +81,12 @@ function analyzeProjectionFaces(img) {
     if (!canvas) {
         canvas = document.createElement('canvas');
         canvas.id = 'define-full-canvas';
+        // 移出屏幕：仅作像素缓冲，不显示在页面上
+        canvas.style.position = 'absolute';
+        canvas.style.left = '-99999px';
+        canvas.style.top = '0';
+        canvas.style.width = '1px';
+        canvas.style.height = '1px';
         document.body.appendChild(canvas);
     }
     canvas.width = cw;
@@ -352,9 +358,10 @@ function clearModelNote(model) {
 /* ---------- 选择 / 拖拽 / 编辑面板 ---------- */
 
 function pickModelFromRay(clientX, clientY) {
+    const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2();
-    mouse.x = (clientX / renderer.domElement.clientWidth) * 2 - 1;
-    mouse.y = -(clientY / renderer.domElement.clientHeight) * 2 + 1;
+    mouse.x = ((clientX - rect.left) / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / renderer.domElement.clientHeight) * 2 + 1;
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
     const meshes = definedModels.map(m => m.mesh);
