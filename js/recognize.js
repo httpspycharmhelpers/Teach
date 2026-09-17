@@ -245,6 +245,7 @@ function defineModelFromImage() {
     scene.add(edgeLine);
 
     const model = {
+        kind: 'model',
         mesh: mesh,
         edge: edgeLine,
         name: name,
@@ -371,20 +372,87 @@ function pickModelFromRay(clientX, clientY) {
     return definedModels.find(m => m.mesh === hits[0].object) || null;
 }
 
-function selectModel(model) {
-    deselectModel();
-    selectedModel = model;
-    fillModelEditor(model);
+/* ---------- 通用编辑面板：自定义模型 / 标记模式小方块 共用 ---------- */
+
+function round3(v) { return Math.round(v * 1000) / 1000; }
+
+function markerUnit() {
+    const u = parseFloat(document.getElementById('length-unit').value);
+    return u > 0 ? u : 1;
+}
+
+// 打开面板（target: { kind, mesh, name, edge?, nameSprite? }）
+function openEditor(target) {
+    closeEditor();
+    selectedModel = target;
+    fillModelEditor(target);
     const el = document.getElementById('model-editor');
     el.style.display = 'block';
 }
 
+function closeEditor() {
+    const el = document.getElementById('model-editor');
+    if (el) el.style.display = 'none';
+    selectedModel = null;
+}
+
+function deselectModel() { closeEditor(); }
+
+// 标记模式：选中任意小方块 → 呼出同一个编辑面板
+function selectMarkerCube(cube) {
+    if (!cube) return;
+    openEditor({ kind: 'cube', mesh: cube, name: '小方块', edge: null, nameSprite: null });
+}
+
+// 标记模式选择变化时同步面板：无选中/目标不在选中集则关闭，否则刷新数值
+function syncMarkerEditorSelection() {
+    if (!markerMode) return;
+    if (!selectedModel || selectedModel.kind !== 'cube') {
+        if (selectedCubes.length > 0) selectMarkerCube(selectedCubes[0]);
+        return;
+    }
+    if (selectedCubes.indexOf(selectedModel.mesh) < 0) {
+        if (selectedCubes.length > 0) selectMarkerCube(selectedCubes[0]);
+        else closeEditor();
+    } else {
+        fillModelEditor(selectedModel);
+    }
+}
+
+// 标记模式拖拽后同步面板坐标
+function syncMarkerEditorPosition() {
+    if (!selectedModel || selectedModel.kind !== 'cube') return;
+    const el = document.getElementById('model-editor');
+    if (!el || el.style.display === 'none') return;
+    const p = selectedModel.mesh.position;
+    document.getElementById('me-pos-x').value = round3(p.x);
+    document.getElementById('me-pos-y').value = round3(p.y);
+    document.getElementById('me-pos-z').value = round3(p.z);
+}
+
+// 删除单个小方块（面板"删除"按钮用）
+function removeSingleCube(cube) {
+    removeNoteVisual(cube);
+    const i = smallCubes.indexOf(cube);
+    if (i >= 0) smallCubes.splice(i, 1);
+    const si = selectedCubes.indexOf(cube);
+    if (si >= 0) selectedCubes.splice(si, 1);
+    cubeGroup.remove(cube);
+    if (cube.geometry) cube.geometry.dispose();
+    if (cube.material && cube.material.dispose) cube.material.dispose();
+    closeEditor();
+    syncSelection();
+    updateVolumeFromMarked();
+}
+
+function selectModel(model) { openEditor(model); }
+
 function syncModelEditorPosition(model) {
     const el = document.getElementById('model-editor');
     if (!el || el.style.display === 'none') return;
-    document.getElementById('me-pos-x').value = model.mesh.position.x;
-    document.getElementById('me-pos-y').value = model.mesh.position.y;
-    document.getElementById('me-pos-z').value = model.mesh.position.z;
+    document.getElementById('me-pos-x').value = round3(model.mesh.position.x);
+    document.getElementById('me-pos-y').value = round3(model.mesh.position.y);
+    document.getElementById('me-pos-z').value = round3(model.mesh.position.z);
 }
 
 // 非标记模式下：点击自定义几何体 → 选择 + 拖拽移动
@@ -426,14 +494,6 @@ function handleModelPointerUp() {
     modelDragActive = null;
 }
 
-function deselectModel() {
-    if (selectedModel) {
-        const el = document.getElementById('model-editor');
-        if (el) el.style.display = 'none';
-        selectedModel = null;
-    }
-}
-
 function removeModel(model) {
     if (!model) return;
     clearModelNote(model);
@@ -451,16 +511,26 @@ function removeModel(model) {
     if (selectedModel === model) deselectModel();
 }
 
-function fillModelEditor(model) {
-    document.getElementById('me-name').textContent = model.name;
-    document.getElementById('me-pos-x').value = model.mesh.position.x;
-    document.getElementById('me-pos-y').value = model.mesh.position.y;
-    document.getElementById('me-pos-z').value = model.mesh.position.z;
-    const box = model.mesh.geometry.parameters;
-    document.getElementById('me-size-w').value = box.width;
-    document.getElementById('me-size-h').value = box.height;
-    document.getElementById('me-size-d').value = box.depth;
-    document.getElementById('me-color').value = '#' + model.mesh.material.color.getHexString();
+function fillModelEditor(target) {
+    const mesh = target.mesh;
+    document.getElementById('me-name').textContent = target.name;
+    document.getElementById('me-pos-x').value = round3(mesh.position.x);
+    document.getElementById('me-pos-y').value = round3(mesh.position.y);
+    document.getElementById('me-pos-z').value = round3(mesh.position.z);
+    if (target.kind === 'cube') {
+        const u = markerUnit();
+        document.getElementById('me-size-w').value = round3(mesh.scale.x * u);
+        document.getElementById('me-size-h').value = round3(mesh.scale.y * u);
+        document.getElementById('me-size-d').value = round3(mesh.scale.z * u);
+        document.getElementById('me-tip').textContent = '小方块：可改坐标/尺寸/颜色/备注';
+    } else {
+        const box = mesh.geometry.parameters;
+        document.getElementById('me-size-w').value = box.width;
+        document.getElementById('me-size-h').value = box.height;
+        document.getElementById('me-size-d').value = box.depth;
+        document.getElementById('me-tip').textContent = '拖动模型可移动';
+    }
+    document.getElementById('me-color').value = '#' + mesh.material.color.getHexString();
 }
 
 function applyModelGeometry() {
@@ -468,21 +538,31 @@ function applyModelGeometry() {
     const w = Math.max(0.1, parseFloat(document.getElementById('me-size-w').value) || 1);
     const h = Math.max(0.1, parseFloat(document.getElementById('me-size-h').value) || 1);
     const d = Math.max(0.1, parseFloat(document.getElementById('me-size-d').value) || 1);
+    const mesh = selectedModel.mesh;
+
+    // 标记模式小方块：按轴缩放（几何体是单位立方体，scale 表示单位数）
+    if (selectedModel.kind === 'cube') {
+        const u = markerUnit();
+        mesh.scale.set(w / u, h / u, d / u);
+        updateNotePosition(mesh);
+        return;
+    }
+
     // 记录旧底面高度，改大小后保持底部不漂移
-    const oldBox = new THREE.Box3().setFromObject(selectedModel.mesh);
+    const oldBox = new THREE.Box3().setFromObject(mesh);
     const oldBottom = oldBox.min.y;
 
-    const oldGeo = selectedModel.mesh.geometry;
+    const oldGeo = mesh.geometry;
     const newGeo = new THREE.BoxGeometry(w, h, d);
-    selectedModel.mesh.geometry = newGeo;
+    mesh.geometry = newGeo;
     oldGeo.dispose();
     if (selectedModel.edge) {
         selectedModel.edge.geometry.dispose();
         selectedModel.edge.geometry = new THREE.EdgesGeometry(newGeo);
     }
 
-    const newBox = new THREE.Box3().setFromObject(selectedModel.mesh);
-    selectedModel.mesh.position.y += (oldBottom - newBox.min.y);
+    const newBox = new THREE.Box3().setFromObject(mesh);
+    mesh.position.y += (oldBottom - newBox.min.y);
     updateModelNameLabel(selectedModel);
     updateModelNotePosition(selectedModel);
 }
@@ -506,13 +586,17 @@ function bindDefineModelUI() {
         if (!selectedModel) return;
         const v = parseFloat(e.target.value);
         if (isNaN(v)) return;
-        selectedModel.mesh.position[e.target.id.replace('me-pos-', '')] = v;
-        if (e.target.id === 'me-pos-y') {
-            selectedModel.mesh.userData.manualY = true;
+        const axis = e.target.id.replace('me-pos-', '');
+        selectedModel.mesh.position[axis] = v;
+        if (axis === 'y') {
             selectedModel.mesh.position.y = Math.max(selectedModel.mesh.position.y, 0.05);
         }
-        updateModelNameLabel(selectedModel);
-        updateModelNotePosition(selectedModel);
+        if (selectedModel.kind === 'cube') {
+            updateNotePosition(selectedModel.mesh);
+        } else {
+            updateModelNameLabel(selectedModel);
+            updateModelNotePosition(selectedModel);
+        }
     };
     ['me-pos-x', 'me-pos-y', 'me-pos-z'].forEach(id => {
         const el = document.getElementById(id);
@@ -524,7 +608,9 @@ function bindDefineModelUI() {
     });
     const color = document.getElementById('me-color');
     if (color) color.addEventListener('input', function() {
-        if (selectedModel) selectedModel.mesh.material.color.set(this.value);
+        if (!selectedModel) return;
+        selectedModel.mesh.material.color.set(this.value);
+        if (selectedModel.kind === 'cube') selectedModel.mesh.userData.userColor = this.value;
     });
 
     const meNote = document.getElementById('me-note');
@@ -549,7 +635,10 @@ function bindDefineModelUI() {
 
     const meDelete = document.getElementById('me-delete');
     if (meDelete) meDelete.addEventListener('click', function() {
-        if (selectedModel && confirm('删除「' + selectedModel.name + '」？')) {
+        if (!selectedModel) return;
+        if (selectedModel.kind === 'cube') {
+            if (confirm('删除该小方块？')) removeSingleCube(selectedModel.mesh);
+        } else if (confirm('删除「' + selectedModel.name + '」？')) {
             removeModel(selectedModel);
         }
     });

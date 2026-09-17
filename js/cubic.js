@@ -193,6 +193,7 @@ function setMarkerTool(tool) {
 function setMarkerMode(active) {
     markerMode = active;
     document.getElementById('marker-controls').style.display = active ? 'flex' : 'none';
+    if (typeof closeEditor === 'function') closeEditor();
     if (active) {
         setMarkerTool('select');
     } else {
@@ -268,9 +269,11 @@ function pickSmallCube(clientX, clientY) {
 }
 
 function setCubeColor(cube, color) {
+    const useColor = (color === DESELECT_COLOR && cube.userData && cube.userData.userColor)
+        ? cube.userData.userColor : color;
     const materials = Array.isArray(cube.material) ? cube.material : [cube.material];
     materials.forEach(m => {
-        m.color.set(color);
+        m.color.set(useColor);
         // 选中时加发光，取消时去掉
         if (color === SELECT_COLOR) {
             m.emissive = new THREE.Color(0x333300);
@@ -295,6 +298,8 @@ function syncSelection() {
         noteBtn.disabled = selectedCubes.length === 0;
         noteBtn.style.opacity = selectedCubes.length === 0 ? 0.5 : 1;
     }
+    // 选中变化时同步通用编辑面板（选中任意立体即呼出）
+    if (typeof syncMarkerEditorSelection === 'function') syncMarkerEditorSelection();
 }
 
 function toggleCubeSelection(cube, event) {
@@ -413,6 +418,7 @@ function onPointerMove(event) {
             const kk = Math.max(0.2, k * start.scale.x);
             c.scale.set(kk, kk, kk);
         });
+        if (typeof syncMarkerEditorSelection === 'function') syncMarkerEditorSelection();
     } else {
         // 移动：绝对偏移 + 可选网格吸附（不累积误差，拖动稳定）
         const moveX = dx * wpp.x;
@@ -428,6 +434,7 @@ function onPointerMove(event) {
             c.position.z = start.pos.z;
             updateNotePosition(c);
         });
+        if (typeof syncMarkerEditorPosition === 'function') syncMarkerEditorPosition();
     }
 }
 
