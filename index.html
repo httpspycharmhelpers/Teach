@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>可视化教学工具</title>
-    <link rel="stylesheet" href="css/style.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=7">
     <script src="vendor/three.min.js"></script>
     <script>
         // Three.js 加载失败时回退到 CDN（优先国内可达的镜像）
@@ -79,6 +79,13 @@
                 <button id="developer-mode">开发者模式</button>
                 <button id="math-problems">数学题目</button>
                 <button id="fullscreen">全屏</button>
+            </div>
+            <div class="settings-group">
+                <div class="settings-header">设置</div>
+                <label class="settings-item"><input type="checkbox" id="set-show-axes" checked> 显示 XYZ 轴</label>
+                <label class="settings-item"><input type="checkbox" id="set-show-ticks" checked> 显示刻度数字</label>
+                <label class="settings-item"><input type="checkbox" id="set-show-grid" checked> 显示网格</label>
+                <label class="settings-item">文字大小 <input type="range" id="set-text-scale" min="0.5" max="2" step="0.1" value="1"></label>
             </div>
         </div>
 
@@ -316,12 +323,12 @@
         </div>
     </div>
 
-    <script src="js/cubic.js?v=6"></script>
-    <script src="js/functions.js?v=6"></script>
-    <script src="js/developer.js?v=6"></script>
-    <script src="js/math.js?v=6"></script>
-    <script src="js/annotation.js?v=6"></script>
-    <script src="js/recognize.js?v=6"></script>
-    <script src="js/app.js?v=6"></script>
+    <script src="js/cubic.js?v=7"></script>
+    <script src="js/functions.js?v=7"></script>
+    <script src="js/developer.js?v=7"></script>
+    <script src="js/math.js?v=7"></script>
+    <script src="js/annotation.js?v=7"></script>
+    <script src="js/recognize.js?v=7"></script>
+    <script src="js/app.js?v=7"></script>
 </body>
 </html>

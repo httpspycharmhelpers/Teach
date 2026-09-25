@@ -34,6 +34,35 @@
         .control-group {
             margin-bottom: 20px;
         }
+        .settings-group {
+            margin-top: 6px;
+            padding-top: 14px;
+            border-top: 1px dashed #bdc3c7;
+        }
+        .settings-header {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        .settings-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #34495e;
+            cursor: pointer;
+        }
+        .settings-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2c3e50;
+        }
+        .settings-item input[type="range"] {
+            flex: 1;
+            max-width: 160px;
+        }
         .control-group label {
             display: block;
             margin-bottom: 8px;

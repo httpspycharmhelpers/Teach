@@ -1,10 +1,13 @@
 // 长方体可视化模块：网格、立方体、分层、标记小方块、体积计算
-const GRID_HALF = 600; // 网格半径：网格 1200×1200，一格 10 单位，轴线延伸至此
+const GRID_HALF = 750; // 网格半径：网格 1500×1500，一格 10 单位，轴线延伸至此
+let gridHelper = null;
+let axesTextScale = 1;
 function createInfinitePlatform() {
     const gridSize = GRID_HALF * 2;
     const gridDivisions = gridSize / 10;
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0xcccccc);
-    scene.add(gridHelper);
+    const gridHelperObj = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0xcccccc);
+    gridHelper = gridHelperObj;
+    scene.add(gridHelperObj);
 
     const planeGeometry = new THREE.PlaneGeometry(gridSize * 2, gridSize * 2);
     const planeMaterial = new THREE.MeshPhongMaterial({
@@ -107,13 +110,17 @@ function buildAxisLines(group, dir, color, name, extent, step) {
         const numSp = makeAxisTextSprite(fmtTick(k * step, step), color, 26);
         numSp.position.copy(p).addScaledVector(perp, tickLen * 1.1);
         numSp.scale.set(numScaleX, numScaleY, 1);
+        numSp.userData.kind = 'num';
+        numSp.userData.baseScale = { x: numScaleX, y: numScaleY };
         group.add(numSp);
     }
 
-    // 字母标注 X/Y/Z（缩小，正方向端点外侧）
+    // 字母标注 X/Y/Z（缩小、在线的端点附近）
     const nameSp = makeAxisTextSprite(name, color, 40);
-    nameSp.position.copy(dir).multiplyScalar(extent * 1.06).addScaledVector(perp, tickLen);
+    nameSp.position.copy(dir).multiplyScalar(extent).addScaledVector(perp, tickLen * 3);
     nameSp.scale.set(numScaleX * 1.4, numScaleY * 1.4, 1);
+    nameSp.userData.kind = 'letter';
+    nameSp.userData.baseScale = { x: numScaleX * 1.4, y: numScaleY * 1.4 };
     group.add(nameSp);
 }
 
@@ -145,7 +152,50 @@ function refreshAxes() {
     zero.position.set(0, 0, 0);
     const zs = Math.max(1, step * 0.7) * 1.2;
     zero.scale.set(zs, zs * (60 / 160), 1);
+    zero.userData.kind = 'zero';
+    zero.userData.baseScale = { x: zs, y: zs * (60 / 160) };
     axesGroup.add(zero);
+}
+
+// ============ 调试面板·设置 ============
+function setupSettingsPanel() {
+    const showAxes = document.getElementById('set-show-axes');
+    const showTicks = document.getElementById('set-show-ticks');
+    const showGrid = document.getElementById('set-show-grid');
+    const textScale = document.getElementById('set-text-scale');
+    [showAxes, showTicks, showGrid].forEach(el => {
+        if (el) el.addEventListener('change', applySettings);
+    });
+    if (textScale) textScale.addEventListener('input', applyTextScale);
+    applySettings();
+    applyTextScale();
+}
+
+function applySettings() {
+    const showAxes = document.getElementById('set-show-axes');
+    const showTicks = document.getElementById('set-show-ticks');
+    const showGrid = document.getElementById('set-show-grid');
+    if (axesGroup) axesGroup.visible = !showAxes || showAxes.checked;
+    if (axesGroup) {
+        axesGroup.traverse(o => {
+            if (!o.isSprite) return;
+            if (o.userData.kind === 'num' || o.userData.kind === 'zero') {
+                if (showTicks) o.visible = showTicks.checked;
+            }
+        });
+    }
+    if (gridHelper) gridHelper.visible = !showGrid || showGrid.checked;
+}
+
+function applyTextScale() {
+    const el = document.getElementById('set-text-scale');
+    if (!el) return;
+    axesTextScale = parseFloat(el.value) || 1;
+    if (!axesGroup) return;
+    axesGroup.traverse(o => {
+        if (!o.isSprite || !o.userData.baseScale) return;
+        o.scale.set(o.userData.baseScale.x * axesTextScale, o.userData.baseScale.y * axesTextScale, 1);
+    });
 }
 
 function createAxes() {

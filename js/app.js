@@ -71,6 +71,8 @@ function init() {
     setupEventListeners();
 
     initDebugPanel();
+
+    if (typeof setupSettingsPanel === 'function') setupSettingsPanel();
 }
 
 function animate() {
