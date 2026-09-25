@@ -71,6 +71,45 @@ function createYAxis() {
     return axisGroup;
 }
 
+// 轴标签：X/Y/Z 贴片（右面=X、前面=Z、顶面=Y），贴在立方体对应面外侧
+function makeAxisLabelSprite(text, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 96, 96);
+    ctx.fillStyle = color;
+    ctx.font = 'bold 68px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 48, 48);
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    return new THREE.Sprite(spriteMat);
+}
+
+function addAxisLabels(length, height, width) {
+    const minDim = Math.min(length, height, width);
+    const off = Math.max(1.5, minDim * 0.12);
+    const sca = Math.max(1.5, minDim * 0.16);
+
+    const X = makeAxisLabelSprite('X', '#e74c3c');
+    X.position.set(length / 2 + off, height / 2, 0);
+    X.scale.set(sca, sca, 1);
+
+    const Y = makeAxisLabelSprite('Y', '#2ecc71');
+    Y.position.set(0, height + off, 0);
+    Y.scale.set(sca, sca, 1);
+
+    const Z = makeAxisLabelSprite('Z', '#3498db');
+    Z.position.set(0, height / 2, width / 2 + off);
+    Z.scale.set(sca, sca, 1);
+
+    cubeGroup.add(X);
+    cubeGroup.add(Y);
+    cubeGroup.add(Z);
+}
+
 function updateCube() {
     while (cubeGroup.children.length > 0) {
         cubeGroup.remove(cubeGroup.children[0]);
@@ -82,6 +121,8 @@ function updateCube() {
         parseFloat(document.getElementById('width-unit').value);
     const heightValue = parseFloat(document.getElementById('height').value) *
         parseFloat(document.getElementById('height-unit').value);
+
+    addAxisLabels(lengthValue, heightValue, widthValue);
 
     // 同步滑块与数字输入框
     document.getElementById('length-num').value = document.getElementById('length').value;

@@ -202,42 +202,6 @@
             width: 100% !important;
             height: 100% !important;
         }
-        .axis-label {
-            position: absolute;
-            font-weight: bold;
-            color: #3498db;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 2px 8px;
-            border-radius: 4px;
-            z-index: 10;
-        }
-        .length-label {
-            bottom: 18px;
-            left: 18px;
-        }
-        .width-label {
-            top: 50%;
-            right: 10px;
-            transform: translateY(-50%);
-        }
-        .height-label {
-            top: 10px;
-            left: 20px;
-        }
-        .instructions {
-            position: absolute;
-            bottom: 22px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
-            text-align: center;
-            color: #7f8c8d;
-            font-size: 0.9rem;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 6px 16px;
-            border-radius: 999px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
         /* ---- 调试面板开关（三个点） ---- */
         #debug-dots {
             position: fixed;
