@@ -243,13 +243,12 @@ function setupEventListeners() {
         addGeometry(type, sz, color, pos, rotDeg, sides);
     });
 
-    // 选择几何体类型时，仅对棱柱/金字塔显示边数滑块
+    // 选择几何体类型时，仅对棱柱/棱锥显示边数滑块
     document.querySelectorAll('.geometry-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.geometry-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            const showSides = this.dataset.type === 'prism' || this.dataset.type === 'pyramid' ||
-                              this.dataset.type === 'cylinder' || this.dataset.type === 'cone';
+            const showSides = this.dataset.type === 'prism' || this.dataset.type === 'pyramid';
             document.getElementById('sides-group').style.display = showSides ? 'block' : 'none';
         });
     });
@@ -311,6 +310,9 @@ function setupEventListeners() {
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerup', onPointerUp);
     renderer.domElement.addEventListener('pointerleave', onPointerUp);
+
+    // 编辑工具栏
+    document.getElementById('note').addEventListener('click', debugPanelNote);
 
     // 标记工具栏
     document.getElementById('marker-select-confirm').addEventListener('click', confirmSelection);

@@ -69,7 +69,9 @@ function displayExpr(e) {
 
 // =================== 3D 曲面 ===================
 function plotFunction3D() {
+    const prevNote = (functionMesh && functionMesh.userData && functionMesh.userData.note) ? functionMesh.userData.note : null;
     if (functionMesh) {
+        if (typeof removeAnyNoteVisual === 'function') removeAnyNoteVisual(functionMesh);
         scene.remove(functionMesh);
     }
 
@@ -99,6 +101,12 @@ function plotFunction3D() {
     functionMesh = new THREE.Mesh(geometry, material);
     functionMesh.rotation.x = Math.PI / 2;
     scene.add(functionMesh);
+
+    // 曲线重绘后保留先前挂的备注
+    if (prevNote && (prevNote.text || prevNote.image)) {
+        functionMesh.userData.note = prevNote;
+        if (typeof ensureAnyNoteVisual === 'function') ensureAnyNoteVisual(functionMesh, prevNote);
+    }
 }
 
 // =================== 2D 曲面（人性化坐标系） ===================
@@ -267,6 +275,7 @@ function init2DFunctionPanel() {
 
 function clearFunction() {
     if (functionMesh) {
+        if (typeof removeAnyNoteVisual === 'function') removeAnyNoteVisual(functionMesh);
         scene.remove(functionMesh);
         functionMesh = null;
     }

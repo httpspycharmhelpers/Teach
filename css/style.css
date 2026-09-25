@@ -63,6 +63,34 @@
             flex: 1;
             max-width: 160px;
         }
+        .settings-sub {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin: 10px 0 6px;
+        }
+        .settings-colors {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .settings-colors label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: #34495e;
+            cursor: pointer;
+        }
+        .settings-colors input[type="color"] {
+            width: 34px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+        }
         .control-group label {
             display: block;
             margin-bottom: 8px;
@@ -121,6 +149,14 @@
             gap: 15px;
             margin-top: 25px;
             flex-wrap: wrap;
+        }
+        .note-btn {
+            background: #2980b9 !important;
+            color: white !important;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2980b9;
+        }
+        .note-btn:hover {
+            background: #1f6fa5 !important;
         }
         button {
             flex: 1;
@@ -805,6 +841,18 @@
             }
         }
         @media (max-width: 768px) {
+            .controls {
+                top: auto;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: auto;
+                max-width: none;
+                max-height: 88vh;
+                border-radius: 18px 18px 0 0;
+                padding: 16px;
+                overflow-y: auto;
+            }
             .controls {
                 padding: 15px;
             }

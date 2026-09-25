@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>可视化教学工具</title>
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="vendor/three.min.js"></script>
     <script>
         // Three.js 加载失败时回退到 CDN（优先国内可达的镜像）
@@ -71,6 +74,7 @@
                 </div>
             </div>
             <div class="buttons">
+                <button id="note" class="note-btn" title="给当前标注的目标加备注（选中模型/小方块优先，否则函数3D，否则主体）">备注</button>
                 <button id="reset">还原</button>
                 <button id="clear">清空</button>
                 <button id="layer-view">分层</button>
@@ -86,6 +90,17 @@
                 <label class="settings-item"><input type="checkbox" id="set-show-ticks" checked> 显示刻度数字</label>
                 <label class="settings-item"><input type="checkbox" id="set-show-grid" checked> 显示网格</label>
                 <label class="settings-item">文字大小 <input type="range" id="set-text-scale" min="0.5" max="2" step="0.1" value="1"></label>
+                <div class="settings-sub">主体颜色（整体一键改全六面）</div>
+                <label class="settings-item"><input type="color" id="set-body-color" value="#4caf50"> 整体</label>
+                <div class="settings-sub">六面单独配色</div>
+                <div class="settings-colors">
+                    <label title="正面(+Z)"><span>前</span><input type="color" id="face-front" value="#9e9e9e"></label>
+                    <label title="背面(-Z)"><span>后</span><input type="color" id="face-back" value="#9e9e9e"></label>
+                    <label title="左面(-X)"><span>左</span><input type="color" id="face-left" value="#2196f3"></label>
+                    <label title="右面(+X)"><span>右</span><input type="color" id="face-right" value="#4caf50"></label>
+                    <label title="顶面(+Y)"><span>上</span><input type="color" id="face-top" value="#9e9e9e"></label>
+                    <label title="底面(-Y)"><span>下</span><input type="color" id="face-bottom" value="#9e9e9e"></label>
+                </div>
             </div>
         </div>
 
@@ -323,12 +338,12 @@
         </div>
     </div>
 
-    <script src="js/cubic.js?v=7"></script>
-    <script src="js/functions.js?v=7"></script>
-    <script src="js/developer.js?v=7"></script>
-    <script src="js/math.js?v=7"></script>
-    <script src="js/annotation.js?v=7"></script>
-    <script src="js/recognize.js?v=7"></script>
-    <script src="js/app.js?v=7"></script>
+    <script src="js/cubic.js?v=9"></script>
+    <script src="js/functions.js?v=9"></script>
+    <script src="js/developer.js?v=9"></script>
+    <script src="js/math.js?v=9"></script>
+    <script src="js/annotation.js?v=9"></script>
+    <script src="js/recognize.js?v=9"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>

@@ -616,6 +616,10 @@ function bindDefineModelUI() {
     const meNote = document.getElementById('me-note');
     if (meNote) meNote.addEventListener('click', function() {
         if (!selectedModel) return;
+        if (typeof openNoteFor === 'function') {
+            openNoteFor(selectedModel.mesh);
+            return;
+        }
         currentNoteCube = selectedModel.mesh;
         const modal = document.getElementById('note-modal');
         const textarea = document.getElementById('note-text');

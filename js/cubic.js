@@ -2,6 +2,10 @@
 const GRID_HALF = 750; // 网格半径：网格 1500×1500，一格 10 单位，轴线延伸至此
 let gridHelper = null;
 let axesTextScale = 1;
+let mainCube = null;
+// 主体六面配色（BoxGeometry 材质顺序：右+右/左/上/下/前/后）
+let bodyColors = { right: 0x4CAF50, left: 0x2196F3, top: 0x9e9e9e, bottom: 0x9e9e9e, front: 0x9e9e9e, back: 0x9e9e9e };
+const FACE_ORDER = ['right', 'left', 'top', 'bottom', 'front', 'back'];
 function createInfinitePlatform() {
     const gridSize = GRID_HALF * 2;
     const gridDivisions = gridSize / 10;
@@ -34,11 +38,9 @@ function getVolumeUnit() {
 
 function formatVolume(volume) {
     if (!isFinite(volume) || volume === 0) return '0';
-    if (volume >= 1) {
-        return volume.toLocaleString('zh-CN', { maximumFractionDigits: 3 });
-    }
-    if (volume >= 1e-5) {
-        return String(Math.round(volume * 1000) / 1000); // 到千分位
+    const v = Math.round(volume * 10000) / 10000; // 精确到万分位 0.0001
+    if (Math.abs(volume) >= 1e-4) {
+        return v.toLocaleString('zh-CN', { maximumFractionDigits: 4 });
     }
     return volume.toExponential(2);
 }
@@ -58,7 +60,8 @@ function makeAxisTextSprite(text, color, fontPx) {
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 80, 30);
     const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+    // depthTest 开启：刻度数字会被主体（立方体）遮挡，不会透过
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true });
     return new THREE.Sprite(spriteMat);
 }
 
@@ -167,8 +170,38 @@ function setupSettingsPanel() {
         if (el) el.addEventListener('change', applySettings);
     });
     if (textScale) textScale.addEventListener('input', applyTextScale);
+
+    const bodyColor = document.getElementById('set-body-color');
+    FACE_ORDER.forEach(face => {
+        const input = document.getElementById('face-' + face);
+        if (input) {
+            input.addEventListener('input', function() {
+                bodyColors[face] = '#' + input.value;
+                applyBodyColors();
+            });
+        }
+    });
+    if (bodyColor) {
+        bodyColor.addEventListener('input', function() {
+            FACE_ORDER.forEach(face => {
+                bodyColors[face] = '#' + bodyColor.value;
+                const faceInput = document.getElementById('face-' + face);
+                if (faceInput) faceInput.value = bodyColor.value;
+            });
+            applyBodyColors();
+        });
+    }
     applySettings();
     applyTextScale();
+}
+
+// 给当前主体重新上色（六面按 bodyColors）
+function applyBodyColors() {
+    if (!mainCube || !mainCube.material) return;
+    const mats = Array.isArray(mainCube.material) ? mainCube.material : [mainCube.material];
+    mats.forEach((m, i) => {
+        if (m && i < FACE_ORDER.length) m.color.set(bodyColors[FACE_ORDER[i]]);
+    });
 }
 
 function applySettings() {
@@ -211,6 +244,8 @@ function createAxes() {
 }
 
 function updateCube() {
+    // 重画主体前保存旧主体的备注（换尺寸后要补挂回去）
+    const prevMainNote = (mainCube && mainCube.userData && mainCube.userData.note) ? mainCube.userData.note : null;
     while (cubeGroup.children.length > 0) {
         cubeGroup.remove(cubeGroup.children[0]);
     }
@@ -246,16 +281,10 @@ function updateCube() {
 
     const geometry = new THREE.BoxGeometry(lengthValue, heightValue, widthValue);
 
-    const materials = [
-        new THREE.MeshPhongMaterial({ color: 0x4CAF50 }),
-        new THREE.MeshPhongMaterial({ color: 0x2196F3 }),
-        new THREE.MeshPhongMaterial({ color: 0x9e9e9e }),
-        new THREE.MeshPhongMaterial({ color: 0x9e9e9e }),
-        new THREE.MeshPhongMaterial({ color: 0x9e9e9e }),
-        new THREE.MeshPhongMaterial({ color: 0x9e9e9e })
-    ];
+    const materials = FACE_ORDER.map(face => new THREE.MeshPhongMaterial({ color: bodyColors[face] }));
 
     cube = new THREE.Mesh(geometry, materials);
+    mainCube = cube;
     cube.position.set(lengthValue / 2, heightValue / 2, widthValue / 2); // 一个角在原点O，紧贴Y轴的一条高向上
     cubeGroup.add(cube);
 
@@ -270,7 +299,15 @@ function updateCube() {
     controls.update();
 
     if (layerMode) {
+        currentLayer = Math.max(1, parseInt(heightValue)); // 每次更新都以当前高度重算层数，避免改高度后分层错乱
         showLayers(heightValue);
+    }
+
+    // 主体重画后，把之前挂上的备注浮层补回去
+    mainCube.userData.note = prevMainNote || {};
+    const mainNote = mainCube.userData.note;
+    if (mainNote && (mainNote.text || mainNote.image)) {
+        ensureAnyNoteVisual(mainCube, mainNote);
     }
 }
 
@@ -430,11 +467,11 @@ function syncSelection() {
     } else {
         countEl.textContent = '已选 ' + selectedCubes.length + ' 个';
     }
-    // 更新备注按钮状态
+    // 更新备注按钮状态（保持可点：未选中时点了会弹提示，而不是按钮无反应）
     const noteBtn = document.getElementById('marker-note');
     if (noteBtn) {
-        noteBtn.disabled = selectedCubes.length === 0;
-        noteBtn.style.opacity = selectedCubes.length === 0 ? 0.5 : 1;
+        noteBtn.disabled = false;
+        noteBtn.style.opacity = 1;
     }
     // 选中变化时同步通用编辑面板（选中任意立体即呼出）
     if (typeof syncMarkerEditorSelection === 'function') syncMarkerEditorSelection();
@@ -591,9 +628,9 @@ function onPointerUp() {
 }
 
 function showLayers(height) {
-    const layerHeight = height / parseInt(document.getElementById('height').value);
-
-    for (let i = 0; i < currentLayer; i++) {
+    const layers = Math.max(1, currentLayer || parseInt(document.getElementById('height').value));
+    const layerHeight = height / layers;
+    for (let i = 0; i < layers; i++) {
         const layerGeometry = new THREE.BoxGeometry(
             parseFloat(document.getElementById('length').value),
             layerHeight,
@@ -640,19 +677,18 @@ function deleteSelectedCube() {
 // 备注功能：支持图片+文字的模态编辑器
 let currentNoteCube = null;
 
-function onMarkerNote() {
-    if (selectedCubes.length === 0) {
-        alert('请先选择小方块再添加备注');
-        return;
-    }
-    currentNoteCube = selectedCubes[0]; // 备注只对第一个选中的方块
+// 打开备注模态，目标可以是任意三维对象（主体/函数3D/小方块/自定义模型）
+function openNoteFor(target) {
+    if (!target) return;
+    currentNoteCube = target;
     const modal = document.getElementById('note-modal');
+    if (!modal) return;
     const textarea = document.getElementById('note-text');
     const preview = document.getElementById('note-image-preview');
     const fileInput = document.getElementById('note-image-input');
-    
+
     // 加载已有备注
-    const note = currentNoteCube.userData.note || {};
+    const note = target.userData.note || {};
     textarea.value = note.text || '';
     if (note.image) {
         preview.src = note.image;
@@ -665,24 +701,66 @@ function onMarkerNote() {
     modal.style.display = 'flex';
 }
 
+function onMarkerNote() {
+    if (selectedCubes.length === 0) {
+        alert('请先选择小方块再添加备注');
+        return;
+    }
+    openNoteFor(selectedCubes[0]); // 备注对第一个选中的方块
+}
+
+function markNoteEmissive(mesh, has) {
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    mats.forEach(m => { if (m && m.emissive) m.emissive.set(has ? 0x004400 : 0x000000); });
+}
+
 function saveNote() {
     if (!currentNoteCube) return;
     const text = document.getElementById('note-text').value;
     const preview = document.getElementById('note-image-preview');
-    currentNoteCube.userData.note = {
+    const note = {
         text: text,
         image: preview.src && preview.src !== window.location.href ? preview.src : null
     };
-    // 标记有备注的方块加一个小标记
-    if (text || currentNoteCube.userData.note.image) {
-        currentNoteCube.material.emissive = new THREE.Color(0x004400);
-    } else {
-        currentNoteCube.material.emissive = new THREE.Color(0x000000);
-    }
+    currentNoteCube.userData.note = note;
+    // 有备注的立体加一个标志色
+    const has = !!(text || note.image);
+    markNoteEmissive(currentNoteCube, has);
+
     document.getElementById('note-modal').style.display = 'none';
-    updateNoteVisuals();
-    syncModelNoteAfterSave(currentNoteCube);
+    notesVisible = true; // 保存后立即显示备注浮层，而不是藏起来让人以为没存上
+    const nBtn = document.getElementById('marker-notes-toggle');
+    if (nBtn) nBtn.textContent = '隐藏备注';
+
+    if (smallCubes.indexOf(currentNoteCube) >= 0) {
+        updateNoteVisuals(); // 小方块 → 既有浮层
+    } else if (typeof definedModels !== 'undefined' && definedModels.some(m => m.mesh === currentNoteCube)) {
+        syncModelNoteAfterSave(currentNoteCube); // 自定义模型 → recognize 浮层
+    } else {
+        ensureAnyNoteVisual(currentNoteCube, note); // 主体/函数3D → 通用浮层
+    }
     currentNoteCube = null;
+}
+
+// 调试面板「备注」按钮：按优先级把备注挂到 选中的模型 → 选中的小方块 → 函数3D → 主体
+function debugPanelNote() {
+    if (typeof selectedModel !== 'undefined' && selectedModel && selectedModel.mesh) {
+        openNoteFor(selectedModel.mesh);
+        return;
+    }
+    if (markerMode && selectedCubes.length > 0) {
+        openNoteFor(selectedCubes[0]);
+        return;
+    }
+    if (typeof functionMesh !== 'undefined' && functionMesh) {
+        openNoteFor(functionMesh);
+        return;
+    }
+    if (mainCube) {
+        openNoteFor(mainCube);
+        return;
+    }
+    alert('当前没有可备注的立体，请先添加或选中一个立体');
 }
 
 function handleNoteImage(input) {
@@ -801,6 +879,72 @@ function buildNoteCanvas(note, done) {
 // 备注浮层统一世界尺寸（卡宽固定约 6 个世界单位，避免卡片过大/过小）
 const NOTE_WORLD_WIDTH = 6;
 
+// 通用备注浮层：对任意三维对象（主体/函数3D等）挂一个引线+卡片
+function removeAnyNoteVisual(obj) {
+    if (!obj || !obj.userData) return;
+    const sp = obj.userData.noteSprite;
+    const ln = obj.userData.noteLine;
+    const parent = obj.parent || scene;
+    if (ln) parent.remove(ln);
+    if (sp) parent.remove(sp);
+    if (sp && sp.material) {
+        if (sp.material.map) sp.material.map.dispose();
+        sp.material.dispose();
+    }
+    if (ln && ln.geometry) ln.geometry.dispose();
+    obj.userData.noteSprite = null;
+    obj.userData.noteLine = null;
+}
+
+function ensureAnyNoteVisual(obj, note) {
+    if (!obj) return;
+    buildNoteCanvas(note || {}, function(canvas) {
+        if (!canvas) { removeAnyNoteVisual(obj); return; }
+        removeAnyNoteVisual(obj);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: texture,
+            depthTest: false
+        }));
+        const s = NOTE_WORLD_WIDTH / canvas.width;
+        sprite.scale.set(canvas.width * s, canvas.height * s, 1);
+        sprite.visible = notesVisible;
+
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, 0)
+        ]);
+        const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+            color: 0x2980b9,
+            linewidth: 1
+        }));
+        line.visible = notesVisible;
+
+        obj.userData.noteSprite = sprite;
+        obj.userData.noteLine = line;
+        const parent = obj.parent || scene;
+        parent.add(sprite);
+        parent.add(line);
+        positionNoteAbove(obj);
+    });
+}
+
+// 备注浮层跟随对象顶部（中心对齐、上方留缝），对小方块/主体/函数3D通用
+function positionNoteAbove(obj) {
+    const sprite = obj.userData.noteSprite;
+    const line = obj.userData.noteLine;
+    if (!sprite || !line) return;
+    const box = new THREE.Box3().setFromObject(obj);
+    const c = box.getCenter(new THREE.Vector3());
+    const gap = 1.2;
+    sprite.position.set(c.x, box.max.y + gap, c.z);
+    line.geometry.setFromPoints([
+        new THREE.Vector3(c.x, box.max.y, c.z),
+        new THREE.Vector3(c.x, box.max.y + gap * 0.6, c.z)
+    ]);
+}
+
 function ensureNoteVisual(cube, note) {
     buildNoteCanvas(note || {}, function(canvas) {
         if (!canvas) return;
@@ -845,18 +989,7 @@ function ensureNoteVisual(cube, note) {
 }
 
 function updateNotePosition(cube) {
-    const sprite = cube.userData.noteSprite;
-    const line = cube.userData.noteLine;
-    if (!sprite || !line) return;
-    const box = new THREE.Box3().setFromObject(cube);
-    const topY = box.max.y;
-    const gap = 1.2;
-    sprite.position.set(cube.position.x, topY + gap, cube.position.z);
-    const linePts = [
-        new THREE.Vector3(cube.position.x, topY, cube.position.z),
-        new THREE.Vector3(cube.position.x, topY + gap * 0.6, cube.position.z)
-    ];
-    line.geometry.setFromPoints(linePts);
+    positionNoteAbove(cube);
 }
 
 // 重建所有带备注方块的浮层
