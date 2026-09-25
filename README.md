@@ -62,8 +62,8 @@ npx serve
 
 MIT License. Copyright (c) 2025 Zhongzhescode.
 
-本项目是**真正的开源教学工具**。我们不接受任何"打着教学工具名义、实则借开源混流量"的行为 —— 代码完全开放、结构清晰、可自由修改与审计。
-This is a **genuine open-source teaching tool**. We reject products that merely hijack the "teaching tool" label for traffic while shipping opaque, bloated, single-file code. Our code is fully open, well-structured, and freely auditable.
+本项目是**真正的开源教学工具**，代码完全开放、结构清晰、可自由修改与审计。
+This is a **genuine open-source teaching tool** ,Our code is fully open, well-structured, and freely auditable.
 
 ## 贡献 / Contributing
 
