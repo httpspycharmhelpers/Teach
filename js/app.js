@@ -55,7 +55,7 @@ function init() {
     scene.add(directionalLight);
 
     createInfinitePlatform();
-    createYAxis();
+    createAxes();
 
     cubeGroup = new THREE.Group();
     scene.add(cubeGroup);

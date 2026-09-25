@@ -35,79 +35,122 @@ function formatVolume(volume) {
     return volume.toLocaleString();
 }
 
-// 创建竖直的 Y 轴（青色细线，贯穿平台上下）
-function createYAxis() {
-    const axisGroup = new THREE.Group();
-    axisGroup.name = 'y-axis';
-    scene.add(axisGroup);
+// 空间直角坐标系：X、Z 在网格平面内互相垂直，Y 竖直穿过网格中心交点 O（棋盘"天元"），三轴带刻度数字与字母标注
+let axesGroup = null;
 
-    const extent = 60;
-    const axisMat = new THREE.LineBasicMaterial({ color: 0x00cccc, linewidth: 1 });
-    const axisPoints = [
-        new THREE.Vector3(0, -extent, 0),
-        new THREE.Vector3(0, extent, 0)
-    ];
-    const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPoints);
-    axisGroup.add(new THREE.Line(axisGeo, axisMat));
-
-    // Y 标签（青色 Sprite）
+function makeAxisTextSprite(text, color, fontPx) {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = 160;
+    canvas.height = 60;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 64, 64);
-    ctx.fillStyle = '#00cccc';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Y', 32, 32);
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
-    const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(1.5, 1.5, 1);
-    sprite.position.set(0, extent + 1, 0);
-    axisGroup.add(sprite);
-
-    return axisGroup;
-}
-
-// 轴标签：X/Y/Z 贴片（右面=X、前面=Z、顶面=Y），贴在立方体对应面外侧
-function makeAxisLabelSprite(text, color) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 96;
-    canvas.height = 96;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 96, 96);
+    ctx.clearRect(0, 0, 160, 60);
     ctx.fillStyle = color;
-    ctx.font = 'bold 68px sans-serif';
+    ctx.font = 'bold ' + fontPx + 'px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, 48, 48);
+    ctx.fillText(text, 80, 30);
     const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     return new THREE.Sprite(spriteMat);
 }
 
-function addAxisLabels(length, height, width) {
-    const minDim = Math.min(length, height, width);
-    const off = Math.max(1.5, minDim * 0.12);
-    const sca = Math.max(1.5, minDim * 0.16);
+function niceStep(value) {
+    if (value <= 0) return 1;
+    const power = Math.pow(10, Math.floor(Math.log10(value)));
+    const n = value / power;
+    if (n <= 1) return 1 * power;
+    if (n <= 2) return 2 * power;
+    if (n <= 5) return 5 * power;
+    return 10 * power;
+}
 
-    const X = makeAxisLabelSprite('X', '#e74c3c');
-    X.position.set(length / 2 + off, height / 2, 0);
-    X.scale.set(sca, sca, 1);
+function fmtTick(v, step) {
+    if (step >= 1) return String(Math.round(v));
+    const d = step < 0.01 ? 3 : step < 0.1 ? 2 : 1;
+    return parseFloat(v.toFixed(d)).toString();
+}
 
-    const Y = makeAxisLabelSprite('Y', '#2ecc71');
-    Y.position.set(0, height + off, 0);
-    Y.scale.set(sca, sca, 1);
+function buildAxisLines(group, dir, color, name, extent, step, region, labelScale) {
+    // 轴线（穿过原点，向两端延伸到网格边缘）
+    const pts = [
+        dir.clone().multiplyScalar(-extent),
+        dir.clone().multiplyScalar(extent)
+    ];
+    const axisMat = new THREE.LineBasicMaterial({ color });
+    const axisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), axisMat);
+    axisLine.name = 'axis';
+    group.add(axisLine);
 
-    const Z = makeAxisLabelSprite('Z', '#3498db');
-    Z.position.set(0, height / 2, width / 2 + off);
-    Z.scale.set(sca, sca, 1);
+    // 刻度方向：与轴线垂直
+    let perp;
+    if (dir.x === 1) perp = new THREE.Vector3(0, 0, 1);
+    else perp = new THREE.Vector3(1, 0, 0);
 
-    cubeGroup.add(X);
-    cubeGroup.add(Y);
-    cubeGroup.add(Z);
+    // 刻度只画在立方体附近（±region），步长随尺寸自适应
+    const tickLen = Math.max(0.5, step * 0.14);
+    const tickMat = new THREE.LineBasicMaterial({ color });
+    const first = Math.ceil(-region / step);
+    const last = Math.floor(region / step);
+    for (let k = first; k <= last; k++) {
+        if (k === 0) continue; // 原点处不标数字
+        const p = dir.clone().multiplyScalar(k * step);
+        const t0 = p.clone().addScaledVector(perp, -tickLen / 2);
+        const t1 = p.clone().addScaledVector(perp, tickLen / 2);
+        const tickMatLocal = tickMat;
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([t0, t1]), tickMatLocal));
+        const numSp = makeAxisTextSprite(fmtTick(k * step, step), color, 26);
+        numSp.position.copy(p).addScaledVector(perp, tickLen * 1.15);
+        numSp.scale.set(labelScale * 1.7, labelScale * 0.7, 1);
+        group.add(numSp);
+    }
+
+    // 字母标注 X/Y/Z（正方向、刻度区域外侧）
+    const nameSp = makeAxisTextSprite(name, color, 64);
+    nameSp.position.copy(dir).multiplyScalar(region * 1.3).addScaledVector(perp, tickLen);
+    nameSp.scale.set(labelScale * 2.6, labelScale * 1.0, 1);
+    group.add(nameSp);
+}
+
+function refreshAxes() {
+    if (!axesGroup) return;
+    const lv = parseFloat(document.getElementById('length').value) * parseFloat(document.getElementById('length-unit').value);
+    const wv = parseFloat(document.getElementById('width').value) * parseFloat(document.getElementById('width-unit').value);
+    const hv = parseFloat(document.getElementById('height').value) * parseFloat(document.getElementById('height-unit').value);
+    const maxDim = Math.max(Math.max(lv, wv, hv), 1);
+    const extent = 375; // 网格半径：X/Z 延长到网格边缘，Y 穿过中心等高延伸
+    const region = Math.max(5, maxDim * 1.6); // 刻度只画在立方体附近，步长随尺寸自适应
+    const step = niceStep((region * 2) / 12);
+    const ud = axesGroup.userData;
+    if (ud.step === step && Math.abs(ud.region - region) <= ud.region * 0.15) return;
+
+    while (axesGroup.children.length > 0) {
+        const c = axesGroup.children[0];
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+            if (c.material.map) c.material.map.dispose();
+            c.material.dispose();
+        }
+        axesGroup.remove(c);
+    }
+    ud.step = step;
+    ud.region = region;
+
+    const labelScale = Math.max(1.2, region * 0.08);
+    buildAxisLines(axesGroup, new THREE.Vector3(1, 0, 0), '#e74c3c', 'X', extent, step, region, labelScale);
+    buildAxisLines(axesGroup, new THREE.Vector3(0, 1, 0), '#2ecc71', 'Y', extent, step, region, labelScale);
+    buildAxisLines(axesGroup, new THREE.Vector3(0, 0, 1), '#3498db', 'Z', extent, step, region, labelScale);
+}
+
+function createAxes() {
+    if (axesGroup) {
+        scene.remove(axesGroup);
+        axesGroup = null;
+    }
+    axesGroup = new THREE.Group();
+    axesGroup.name = 'axes';
+    scene.add(axesGroup);
+    refreshAxes();
+    return axesGroup;
 }
 
 function updateCube() {
@@ -122,7 +165,7 @@ function updateCube() {
     const heightValue = parseFloat(document.getElementById('height').value) *
         parseFloat(document.getElementById('height-unit').value);
 
-    addAxisLabels(lengthValue, heightValue, widthValue);
+    refreshAxes();
 
     // 同步滑块与数字输入框
     document.getElementById('length-num').value = document.getElementById('length').value;
