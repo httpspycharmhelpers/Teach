@@ -246,6 +246,7 @@ function createAxes() {
 function updateCube() {
     // 重画主体前保存旧主体的备注（换尺寸后要补挂回去）
     const prevMainNote = (mainCube && mainCube.userData && mainCube.userData.note) ? mainCube.userData.note : null;
+    const prevMainSelected = !!noteSelection && noteSelection === mainCube;
     while (cubeGroup.children.length > 0) {
         cubeGroup.remove(cubeGroup.children[0]);
     }
@@ -308,6 +309,11 @@ function updateCube() {
     const mainNote = mainCube.userData.note;
     if (mainNote && (mainNote.text || mainNote.image)) {
         ensureAnyNoteVisual(mainCube, mainNote);
+    }
+    // 主体重画后，若此前被点选，选中态转到新主体
+    if (prevMainSelected) {
+        noteSelection = mainCube;
+        setObjHighlight(mainCube, true);
     }
 }
 
@@ -497,8 +503,56 @@ function toggleCubeSelection(cube, event) {
 let dragStartClient = null;
 let dragStartState = [];   // 每个选中块拖拽开始时的 position/rotation/scale
 
+// 点选主体/函数3D：供「备注」按钮使用（必须先选中一个立体，再点备注）
+let noteSelection = null;
+
+function setObjHighlight(obj, on) {
+    if (!obj) return;
+    const has = !!(obj.userData && obj.userData.note && (obj.userData.note.text || obj.userData.note.image));
+    const base = on ? 0x332200 : (has ? 0x004400 : 0x000000);
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach(m => { if (m && m.emissive) m.emissive.set(base); });
+}
+
+function setNoteSelection(obj) {
+    if (noteSelection && noteSelection !== obj) setObjHighlight(noteSelection, false);
+    noteSelection = obj;
+    if (obj) setObjHighlight(obj, true);
+}
+
+function clearNoteSelection() {
+    if (noteSelection) setObjHighlight(noteSelection, false);
+    noteSelection = null;
+}
+
+function pickBodyOrFunction(clientX, clientY) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((clientX - rect.left) / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / renderer.domElement.clientHeight) * 2 + 1;
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    const targets = [];
+    if (mainCube) targets.push(mainCube);
+    if (typeof functionMesh !== 'undefined' && functionMesh) targets.push(functionMesh);
+    if (targets.length === 0) return null;
+    const hits = raycaster.intersectObjects(targets, true);
+    if (hits.length === 0) return null;
+    let o = hits[0].object;
+    while (o.parent && targets.indexOf(o) < 0) o = o.parent;
+    return o;
+}
+
 function onPointerDown(event) {
     if (!markerMode) {
+        const ndc = eventToNDC(event);
+        const picked = pickBodyOrFunction(ndc.clientX, ndc.clientY);
+        if (picked) {
+            event.stopPropagation();
+            if (typeof deselectModel === 'function') deselectModel();
+            setNoteSelection(picked);
+            return;
+        }
         handleModelPointerDown(event);
         return;
     }
@@ -506,6 +560,7 @@ function onPointerDown(event) {
     const cube = pickSmallCube(ndc.clientX, ndc.clientY);
 
     if (cube) {
+        clearNoteSelection(); // 选中/操作小方块时，取消此前点选的主体/函数3D
         event.stopPropagation();
         // 临时禁用 OrbitControls，避免点击/拖拽方块时视角跟着旋转
         if (controls) controls.enabled = false;
@@ -542,10 +597,24 @@ function onPointerDown(event) {
         return;
     }
 
-    // 点击空白：清除所有选中
+    // 没点中小方块：试试点中主体/函数3D（标记模式下也可选中，供备注）
+    const pickedBody = pickBodyOrFunction(ndc.clientX, ndc.clientY);
+    if (pickedBody) {
+        event.stopPropagation();
+        if (currentTool === 'select') {
+            selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
+            selectedCubes = [];
+        }
+        setNoteSelection(pickedBody);
+        syncSelection();
+        return;
+    }
+
+    // 点击空白：清除所有选中（含点选的立体）
     if (currentTool === 'select') {
         selectedCubes.forEach(c => setCubeColor(c, DESELECT_COLOR));
         selectedCubes = [];
+        clearNoteSelection();
         syncSelection();
     }
 }
@@ -630,12 +699,10 @@ function onPointerUp() {
 function showLayers(height) {
     const layers = Math.max(1, currentLayer || parseInt(document.getElementById('height').value));
     const layerHeight = height / layers;
+    const lv = parseFloat(document.getElementById('length').value);
+    const wv = parseFloat(document.getElementById('width').value);
     for (let i = 0; i < layers; i++) {
-        const layerGeometry = new THREE.BoxGeometry(
-            parseFloat(document.getElementById('length').value),
-            layerHeight,
-            parseFloat(document.getElementById('width').value)
-        );
+        const layerGeometry = new THREE.BoxGeometry(lv, layerHeight, wv);
 
         const layerMaterial = new THREE.MeshPhongMaterial({
             color: 0xff9800,
@@ -644,12 +711,12 @@ function showLayers(height) {
         });
 
         const layer = new THREE.Mesh(layerGeometry, layerMaterial);
-        layer.position.y = (i * layerHeight) + (layerHeight / 2);
+        layer.position.set(lv / 2, (i * layerHeight) + (layerHeight / 2), wv / 2); // 与主体同心，一层层向上叠
         cubeGroup.add(layer);
 
         const layerEdges = new THREE.EdgesGeometry(layerGeometry);
         const layerLine = new THREE.LineSegments(layerEdges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-        layerLine.position.y = (i * layerHeight) + (layerHeight / 2);
+        layerLine.position.set(lv / 2, (i * layerHeight) + (layerHeight / 2), wv / 2);
         cubeGroup.add(layerLine);
     }
 }
@@ -742,25 +809,24 @@ function saveNote() {
     currentNoteCube = null;
 }
 
-// 调试面板「备注」按钮：按优先级把备注挂到 选中的模型 → 选中的小方块 → 函数3D → 主体
+// 调试面板「备注」按钮：必须先在画布上点选一个立体（主体/函数3D/小方块/自定义模型），再为其加备注
 function debugPanelNote() {
+    // 识别模式选中的自定义模型
     if (typeof selectedModel !== 'undefined' && selectedModel && selectedModel.mesh) {
         openNoteFor(selectedModel.mesh);
         return;
     }
+    // 标记模式选中的小方块
     if (markerMode && selectedCubes.length > 0) {
         openNoteFor(selectedCubes[0]);
         return;
     }
-    if (typeof functionMesh !== 'undefined' && functionMesh) {
-        openNoteFor(functionMesh);
+    // 点选的主体/函数3D
+    if (noteSelection) {
+        openNoteFor(noteSelection);
         return;
     }
-    if (mainCube) {
-        openNoteFor(mainCube);
-        return;
-    }
-    alert('当前没有可备注的立体，请先添加或选中一个立体');
+    alert('请先在画布上点击选中一个立体（主体/函数3D/小方块/自定义模型），再点「备注」');
 }
 
 function handleNoteImage(input) {

@@ -70,6 +70,7 @@ function displayExpr(e) {
 // =================== 3D 曲面 ===================
 function plotFunction3D() {
     const prevNote = (functionMesh && functionMesh.userData && functionMesh.userData.note) ? functionMesh.userData.note : null;
+    const prevSelected = typeof noteSelection !== 'undefined' && !!functionMesh && noteSelection === functionMesh;
     if (functionMesh) {
         if (typeof removeAnyNoteVisual === 'function') removeAnyNoteVisual(functionMesh);
         scene.remove(functionMesh);
@@ -106,6 +107,11 @@ function plotFunction3D() {
     if (prevNote && (prevNote.text || prevNote.image)) {
         functionMesh.userData.note = prevNote;
         if (typeof ensureAnyNoteVisual === 'function') ensureAnyNoteVisual(functionMesh, prevNote);
+    }
+    // 若函数3D正被点选（备注目标），选中态转到新曲面
+    if (prevSelected) {
+        noteSelection = functionMesh;
+        if (typeof setObjHighlight === 'function') setObjHighlight(functionMesh, true);
     }
 }
 
@@ -276,6 +282,10 @@ function init2DFunctionPanel() {
 function clearFunction() {
     if (functionMesh) {
         if (typeof removeAnyNoteVisual === 'function') removeAnyNoteVisual(functionMesh);
+        // 若正选中的是函数3D，取消了它的选中态
+        if (typeof noteSelection !== 'undefined' && noteSelection === functionMesh && typeof clearNoteSelection === 'function') {
+            clearNoteSelection();
+        }
         scene.remove(functionMesh);
         functionMesh = null;
     }

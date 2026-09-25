@@ -462,6 +462,7 @@ function handleModelPointerDown(event) {
     if (model) {
         event.stopPropagation();
         if (controls) controls.enabled = false;
+        if (typeof clearNoteSelection === 'function') clearNoteSelection(); // 主体/函数3D的点选态让位给模型选中
         selectModel(model);
         modelDragActive = model;
         isDragging = true;
@@ -469,6 +470,7 @@ function handleModelPointerDown(event) {
         dragStartState = [{ pos: model.mesh.position.clone() }];
     } else {
         deselectModel();
+        if (typeof clearNoteSelection === 'function') clearNoteSelection(); // 点击空白取消所有选中
     }
 }
 
