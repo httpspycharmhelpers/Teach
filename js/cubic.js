@@ -29,10 +29,14 @@ function getVolumeUnit() {
 }
 
 function formatVolume(volume) {
-    if (volume > 1000000) {
-        return volume.toExponential(2);
+    if (!isFinite(volume) || volume === 0) return '0';
+    if (volume >= 1) {
+        return volume.toLocaleString('zh-CN', { maximumFractionDigits: 3 });
     }
-    return volume.toLocaleString();
+    if (volume >= 1e-5) {
+        return String(Math.round(volume * 1000) / 1000); // 到千分位
+    }
+    return volume.toExponential(2);
 }
 
 // 空间直角坐标系：X、Z 在网格平面内互相垂直，Y 竖直穿过网格中心交点 O（棋盘"天元"），三轴带刻度数字与字母标注
@@ -70,8 +74,8 @@ function fmtTick(v, step) {
     return parseFloat(v.toFixed(d)).toString();
 }
 
-function buildAxisLines(group, dir, color, name, extent, step, region, labelScale) {
-    // 轴线（穿过原点，向两端延伸到网格边缘）
+function buildAxisLines(group, dir, color, name, extent, step) {
+    // 轴线（穿过原点，延伸到网格边缘）
     const pts = [
         dir.clone().multiplyScalar(-extent),
         dir.clone().multiplyScalar(extent)
@@ -86,42 +90,38 @@ function buildAxisLines(group, dir, color, name, extent, step, region, labelScal
     if (dir.x === 1) perp = new THREE.Vector3(0, 0, 1);
     else perp = new THREE.Vector3(1, 0, 0);
 
-    // 刻度只画在立方体附近（±region），步长随尺寸自适应
-    const tickLen = Math.max(0.5, step * 0.14);
+    // 刻度与线同长：从头标到尾，每个刻度都标数字
+    const tickLen = Math.max(1.5, extent * 0.01);
     const tickMat = new THREE.LineBasicMaterial({ color });
-    const first = Math.ceil(-region / step);
-    const last = Math.floor(region / step);
+    const numScaleX = Math.max(1, step * 0.8);
+    const numScaleY = numScaleX * (60 / 160);
+    const first = Math.ceil(-extent / step);
+    const last = Math.floor(extent / step);
     for (let k = first; k <= last; k++) {
-        if (k === 0) continue; // 原点处不标数字
+        if (k === 0) continue; // 原点数字 0 单独绘制一次
         const p = dir.clone().multiplyScalar(k * step);
         const t0 = p.clone().addScaledVector(perp, -tickLen / 2);
         const t1 = p.clone().addScaledVector(perp, tickLen / 2);
-        const tickMatLocal = tickMat;
-        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([t0, t1]), tickMatLocal));
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([t0, t1]), tickMat));
         const numSp = makeAxisTextSprite(fmtTick(k * step, step), color, 26);
-        numSp.position.copy(p).addScaledVector(perp, tickLen * 1.15);
-        numSp.scale.set(labelScale * 1.7, labelScale * 0.7, 1);
+        numSp.position.copy(p).addScaledVector(perp, tickLen * 1.1);
+        numSp.scale.set(numScaleX, numScaleY, 1);
         group.add(numSp);
     }
 
-    // 字母标注 X/Y/Z（正方向、刻度区域外侧）
-    const nameSp = makeAxisTextSprite(name, color, 64);
-    nameSp.position.copy(dir).multiplyScalar(region * 1.3).addScaledVector(perp, tickLen);
-    nameSp.scale.set(labelScale * 2.6, labelScale * 1.0, 1);
+    // 字母标注 X/Y/Z（缩小，正方向端点外侧）
+    const nameSp = makeAxisTextSprite(name, color, 40);
+    nameSp.position.copy(dir).multiplyScalar(extent * 1.06).addScaledVector(perp, tickLen);
+    nameSp.scale.set(numScaleX * 1.4, numScaleY * 1.4, 1);
     group.add(nameSp);
 }
 
 function refreshAxes() {
     if (!axesGroup) return;
-    const lv = parseFloat(document.getElementById('length').value) * parseFloat(document.getElementById('length-unit').value);
-    const wv = parseFloat(document.getElementById('width').value) * parseFloat(document.getElementById('width-unit').value);
-    const hv = parseFloat(document.getElementById('height').value) * parseFloat(document.getElementById('height-unit').value);
-    const maxDim = Math.max(Math.max(lv, wv, hv), 1);
-    const extent = 375; // 网格半径：X/Z 延长到网格边缘，Y 穿过中心等高延伸
-    const region = Math.max(5, maxDim * 1.6); // 刻度只画在立方体附近，步长随尺寸自适应
-    const step = niceStep((region * 2) / 12);
+    const extent = 375; // 网格半径：X/Z 延伸到网格边缘，Y 等高穿过中心
+    const step = 10; // 10 为一组标刻度（与网格一格 10 单位一致），刻度标到线的尽头
     const ud = axesGroup.userData;
-    if (ud.step === step && Math.abs(ud.region - region) <= ud.region * 0.15) return;
+    if (ud.step === step && ud.extent === extent) return;
 
     while (axesGroup.children.length > 0) {
         const c = axesGroup.children[0];
@@ -133,12 +133,18 @@ function refreshAxes() {
         axesGroup.remove(c);
     }
     ud.step = step;
-    ud.region = region;
+    ud.extent = extent;
 
-    const labelScale = Math.max(1.2, region * 0.08);
-    buildAxisLines(axesGroup, new THREE.Vector3(1, 0, 0), '#e74c3c', 'X', extent, step, region, labelScale);
-    buildAxisLines(axesGroup, new THREE.Vector3(0, 1, 0), '#2ecc71', 'Y', extent, step, region, labelScale);
-    buildAxisLines(axesGroup, new THREE.Vector3(0, 0, 1), '#3498db', 'Z', extent, step, region, labelScale);
+    buildAxisLines(axesGroup, new THREE.Vector3(1, 0, 0), '#e74c3c', 'X', extent, step);
+    buildAxisLines(axesGroup, new THREE.Vector3(0, 1, 0), '#2ecc71', 'Y', extent, step);
+    buildAxisLines(axesGroup, new THREE.Vector3(0, 0, 1), '#3498db', 'Z', extent, step);
+
+    // 原点数字 0（O 即为 0）：只标注一次
+    const zero = makeAxisTextSprite('0', '#555555', 42);
+    zero.position.set(0, 0, -step * 0.7);
+    const zs = Math.max(1, step * 0.7) * 1.2;
+    zero.scale.set(zs, zs * (60 / 160), 1);
+    axesGroup.add(zero);
 }
 
 function createAxes() {
@@ -158,12 +164,10 @@ function updateCube() {
         cubeGroup.remove(cubeGroup.children[0]);
     }
 
-    const lengthValue = parseFloat(document.getElementById('length').value) *
-        parseFloat(document.getElementById('length-unit').value);
-    const widthValue = parseFloat(document.getElementById('width').value) *
-        parseFloat(document.getElementById('width-unit').value);
-    const heightValue = parseFloat(document.getElementById('height').value) *
-        parseFloat(document.getElementById('height-unit').value);
+    // 世界尺寸 = 滑块数值（单位只影响“立方厘米/毫米…”标签显示，不再缩放立方体造成悬殊）
+    const lengthValue = parseFloat(document.getElementById('length').value);
+    const widthValue = parseFloat(document.getElementById('width').value);
+    const heightValue = parseFloat(document.getElementById('height').value);
 
     refreshAxes();
 
@@ -174,7 +178,7 @@ function updateCube() {
 
     const volume = lengthValue * widthValue * heightValue;
     const unit = getVolumeUnit();
-    document.getElementById('volume').textContent = volume.toLocaleString();
+    document.getElementById('volume').textContent = formatVolume(volume);
     document.querySelector('.volume-display').innerHTML =
         `体积 = <span id="volume">${formatVolume(volume)}</span> ${unit}`;
 
@@ -201,8 +205,7 @@ function updateCube() {
     ];
 
     cube = new THREE.Mesh(geometry, materials);
-    cube.position.y = heightValue / 2;           // 底面贴地（y=0）
-    cube.position.set(0, heightValue / 2, 0);
+    cube.position.set(lengthValue / 2, heightValue / 2, widthValue / 2); // 一个角在原点O，紧贴Y轴的一条高向上
     cubeGroup.add(cube);
 
     const edges = new THREE.EdgesGeometry(geometry);
@@ -220,10 +223,10 @@ function updateCube() {
     }
 }
 
-// 创建标记模式的小方块（从地面 y=0 向上堆叠）
+// 创建标记模式的小方块（在地面上从 O 角向上堆叠，一格=1 世界单位）
 function createSmallCubes(length, height, width) {
     smallCubes = [];
-    const unitSize = parseFloat(document.getElementById('length-unit').value);
+    const unitSize = 1;
     let index = 0;
 
     for (let x = 0; x < parseInt(document.getElementById('length').value); x++) {
@@ -238,9 +241,9 @@ function createSmallCubes(length, height, width) {
 
                 const smallCube = new THREE.Mesh(geometry, material);
                 smallCube.position.set(
-                    x * unitSize - (length / 2) + unitSize / 2,
+                    x * unitSize + unitSize / 2,
                     y * unitSize + unitSize / 2,
-                    z * unitSize - (width / 2) + unitSize / 2
+                    z * unitSize + unitSize / 2
                 );
 
                 smallCube.userData = {
@@ -485,7 +488,7 @@ function onPointerMove(event) {
     if (Math.hypot(dx, dy) < 4) return;
 
     const wpp = computeWorldPerPixel();
-    const unitSize = parseFloat(document.getElementById('length-unit').value);
+    const unitSize = 1; // 世界单位=滑块数值，一格一格吸附
 
     if (currentTool === 'rotate') {
         // 旋转：水平拖动绕 Y 轴，垂直拖动绕 X 轴，采用起始角度+偏移
@@ -541,11 +544,9 @@ function showLayers(height) {
 
     for (let i = 0; i < currentLayer; i++) {
         const layerGeometry = new THREE.BoxGeometry(
-            parseInt(document.getElementById('length').value) *
-            parseFloat(document.getElementById('length-unit').value),
+            parseFloat(document.getElementById('length').value),
             layerHeight,
-            parseInt(document.getElementById('width').value) *
-            parseFloat(document.getElementById('width-unit').value)
+            parseFloat(document.getElementById('width').value)
         );
 
         const layerMaterial = new THREE.MeshPhongMaterial({
@@ -555,12 +556,12 @@ function showLayers(height) {
         });
 
         const layer = new THREE.Mesh(layerGeometry, layerMaterial);
-        layer.position.y = (-height / 2) + (i * layerHeight) + (layerHeight / 2);
+        layer.position.y = (i * layerHeight) + (layerHeight / 2);
         cubeGroup.add(layer);
 
         const layerEdges = new THREE.EdgesGeometry(layerGeometry);
         const layerLine = new THREE.LineSegments(layerEdges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-        layerLine.position.y = (-height / 2) + (i * layerHeight) + (layerHeight / 2);
+        layerLine.position.y = (i * layerHeight) + (layerHeight / 2);
         cubeGroup.add(layerLine);
     }
 }
@@ -797,9 +798,8 @@ function updateNotePosition(cube) {
     const line = cube.userData.noteLine;
     if (!sprite || !line) return;
     const box = new THREE.Box3().setFromObject(cube);
-    const unit = parseFloat(document.getElementById('length-unit').value);
     const topY = box.max.y;
-    const gap = Math.max(unit * 1.2, 1.2);
+    const gap = 1.2;
     sprite.position.set(cube.position.x, topY + gap, cube.position.z);
     const linePts = [
         new THREE.Vector3(cube.position.x, topY, cube.position.z),
@@ -864,7 +864,7 @@ function applyMarkerSize() {
         alert('请输入有效的尺寸（支持小数，如 0.5 / 1 / 2）');
         return;
     }
-    const unitSize = parseFloat(document.getElementById('length-unit').value);
+    const unitSize = 1; // 世界单位=滑块数值
     selectedCubes.forEach(cube => {
         const k = newSize / unitSize;
         cube.scale.set(k, k, k);
@@ -876,9 +876,9 @@ function applyMarkerSize() {
 
 // 根据现有小方块计算并显示体积（不规则形状的体积 = 小方块数 × 单位体积）
 function updateVolumeFromMarked() {
-    const unitSize = parseFloat(document.getElementById('length-unit').value);
+    const unitSize = 1; // 世界单位=滑块数值
     const bodyVolume = smallCubes.length * (unitSize * unitSize * unitSize);
-    document.getElementById('volume').textContent = bodyVolume.toLocaleString();
+    document.getElementById('volume').textContent = formatVolume(bodyVolume);
     document.querySelector('.volume-display').innerHTML =
-        `体积 = <span id="volume">${formatVolume(bodyVolume)}</span> 立方单位<br><small>（${smallCubes.length} 个小方块）</small>`;
+        `体积 = <span id="volume">${formatVolume(bodyVolume)}</span> ${getVolumeUnit()}<br><small>（${smallCubes.length} 个小方块）</small>`;
 }
