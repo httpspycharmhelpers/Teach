@@ -197,6 +197,11 @@
             background: #f8f9fa;
             overflow: hidden;
         }
+        #cube-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
         .axis-label {
             position: absolute;
             font-weight: bold;
