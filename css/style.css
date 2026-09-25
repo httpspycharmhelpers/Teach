@@ -29,20 +29,28 @@
             font-size: 1.1rem;
         }
         .container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 30px;
-            max-width: 1600px;
             width: 100%;
+            max-width: 1600px;
+            display: flex;
+            align-items: stretch;
         }
         .controls {
+            display: none;
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 90;
             background: white;
             border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
+            padding: 18px 20px;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+            width: 340px;
+            max-width: 92vw;
+            max-height: calc(100vh - 110px);
+            overflow-y: auto;
+        }
+        .controls.show {
+            display: block;
         }
         .control-group {
             margin-bottom: 20px;
@@ -176,8 +184,9 @@
         .visualization {
             flex: 1;
             min-width: 300px;
-            max-width: 1000px;
-            height: 600px;
+            width: 100%;
+            height: calc(100vh - 175px);
+            min-height: 480px;
             background: white;
             border-radius: 15px;
             padding: 20px;
@@ -198,8 +207,9 @@
             font-weight: bold;
         }
         #cube-container {
+            flex: 1;
             width: 100%;
-            height: 500px;
+            min-height: 360px;
             background: #f8f9fa;
             border-radius: 8px;
             overflow: hidden;
@@ -234,46 +244,37 @@
             color: #7f8c8d;
             font-size: 0.9rem;
         }
-        .social-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 30px;
-            padding: 15px 25px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 1400px;
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .avatar {
-            width: 40px;
-            height: 40px;
+        /* ---- 调试面板开关（三个点） ---- */
+        #debug-dots {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
-            background: #3498db;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid #d5dbe3;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+            color: #34495e;
+            font-size: 1.6rem;
+            font-weight: bold;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 95;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
+            padding: 0;
+            letter-spacing: 2px;
+            padding-left: 2px;
         }
-        .chat-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: #7f8c8d;
+        #debug-dots:hover {
+            background: #ecf0f1;
         }
-        .tag {
+        #debug-dots.active {
             background: #3498db;
             color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.9rem;
+            border-color: #2980b9;
         }
         
         /* 模态窗口样式 */
@@ -813,23 +814,9 @@
 
         /* ---- 响应式 ---- */
         @media (max-width: 1200px) {
-            .container {
-                flex-direction: column;
-                align-items: center;
-            }
-            .controls, .visualization {
-                max-width: 100%;
-            }
             .visualization {
-                height: 500px;
-            }
-            #cube-container {
-                height: 400px;
-            }
-            .social-bar {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
+                height: calc(100vh - 175px);
+                min-height: 440px;
             }
         }
         @media (max-width: 768px) {

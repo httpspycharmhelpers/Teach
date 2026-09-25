@@ -16,6 +16,16 @@ let customGeometries = [];
 let functionCanvas2D = null;
 let functionCtx2D = null;
 
+// 调试面板开关：点击右下角“三个点”呼出/隐藏右上角悬浮面板
+function initDebugPanel() {
+    const dots = document.getElementById('debug-dots');
+    const panel = document.querySelector('.controls');
+    dots.addEventListener('click', function() {
+        const open = panel.classList.toggle('show');
+        this.classList.toggle('active', open);
+    });
+}
+
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8f9fa);
@@ -59,6 +69,8 @@ function init() {
     init2DFunctionPanel();
 
     setupEventListeners();
+
+    initDebugPanel();
 }
 
 function animate() {
@@ -143,15 +155,18 @@ function setupEventListeners() {
     });
 
     document.getElementById('fullscreen').addEventListener('click', function() {
-        const elem = document.getElementById('cube-container');
+        const el = document.documentElement;
         if (!document.fullscreenElement) {
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
+            if (el.requestFullscreen) {
+                el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            } else if (el.msRequestFullscreen) {
+                el.msRequestFullscreen();
             }
+            // 进入全屏后关闭调试面板，仅保留右下角“三个点”
+            document.querySelector('.controls').classList.remove('show');
+            document.getElementById('debug-dots').classList.remove('active');
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
@@ -160,6 +175,9 @@ function setupEventListeners() {
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
+            // 退出全屏时重新呼出调试面板，方便继续调整
+            document.querySelector('.controls').classList.add('show');
+            document.getElementById('debug-dots').classList.add('active');
         }
     });
 
