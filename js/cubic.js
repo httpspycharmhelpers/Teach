@@ -1,7 +1,8 @@
 // 长方体可视化模块：网格、立方体、分层、标记小方块、体积计算
+const GRID_HALF = 600; // 网格半径：网格 1200×1200，一格 10 单位，轴线延伸至此
 function createInfinitePlatform() {
-    const gridSize = 750;
-    const gridDivisions = 75;
+    const gridSize = GRID_HALF * 2;
+    const gridDivisions = gridSize / 10;
     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0xcccccc);
     scene.add(gridHelper);
 
@@ -118,7 +119,7 @@ function buildAxisLines(group, dir, color, name, extent, step) {
 
 function refreshAxes() {
     if (!axesGroup) return;
-    const extent = 375; // 网格半径：X/Z 延伸到网格边缘，Y 等高穿过中心
+    const extent = GRID_HALF; // 网格半径：轴线延伸到网格边缘
     const step = 10; // 10 为一组标刻度（与网格一格 10 单位一致），刻度标到线的尽头
     const ud = axesGroup.userData;
     if (ud.step === step && ud.extent === extent) return;
@@ -139,9 +140,9 @@ function refreshAxes() {
     buildAxisLines(axesGroup, new THREE.Vector3(0, 1, 0), '#2ecc71', 'Y', extent, step);
     buildAxisLines(axesGroup, new THREE.Vector3(0, 0, 1), '#3498db', 'Z', extent, step);
 
-    // 原点数字 0（O 即为 0）：只标注一次
+    // 原点数字 0（O 即天元与 0 相交的网格中心交点）：正好标在交点上
     const zero = makeAxisTextSprite('0', '#555555', 42);
-    zero.position.set(0, 0, -step * 0.7);
+    zero.position.set(0, 0, 0);
     const zs = Math.max(1, step * 0.7) * 1.2;
     zero.scale.set(zs, zs * (60 / 160), 1);
     axesGroup.add(zero);
